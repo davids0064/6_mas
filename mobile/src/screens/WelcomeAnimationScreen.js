@@ -55,18 +55,34 @@ const RATIO_IMAGEN = 1024 / 1536;
 const ALTO_MARCO = Math.min(ALTO_PANTALLA, ANCHO_PANTALLA / RATIO_IMAGEN);
 const ANCHO_MARCO = ALTO_MARCO * RATIO_IMAGEN;
 
-// Posición (centro, en % del marco) y tamaño (en % del ancho/alto del
-// marco) de cada icono, medidos directamente sobre home_1.png a 1024x1536.
-// vueltas: SIEMPRE entero (ver nota arriba). retraso: para que no giren
-// todos sincronizados.
-const ICONOS = [
-  { id: 'bienestar', fuente: require('../../assets/icons/sprite_bienestar.png'), left: '29.3%', top: '16.8%', ancho: '19.5%', alto: '13.0%', vueltas: 2, retraso: 0 },
-  { id: 'fitness', fuente: require('../../assets/icons/sprite_fitness.png'), left: '78.1%', top: '19.4%', ancho: '20.5%', alto: '13.7%', vueltas: 3, retraso: 150 },
-  { id: 'gastronomia', fuente: require('../../assets/icons/sprite_gastronomia.png'), left: '11.7%', top: '35.2%', ancho: '20.5%', alto: '13.7%', vueltas: 2, retraso: 300 },
-  { id: 'tecnologia', fuente: require('../../assets/icons/sprite_tecnologia.png'), left: '89.4%', top: '35.8%', ancho: '20.5%', alto: '13.7%', vueltas: 3, retraso: 450 },
-  { id: 'musica', fuente: require('../../assets/icons/sprite_musica.png'), left: '17.1%', top: '53.1%', ancho: '20.5%', alto: '13.7%', vueltas: 2, retraso: 600 },
-  { id: 'lectura', fuente: require('../../assets/icons/sprite_lectura.png'), left: '82.5%', top: '53.7%', ancho: '20.5%', alto: '13.7%', vueltas: 3, retraso: 750 },
+// Centro (centroX/centroY, en % del marco) y tamaño (anchoPct/altoPct, en %
+// del ancho/alto del marco) de cada icono, medidos directamente sobre
+// home_1.png a 1024x1536. vueltas: SIEMPRE entero (ver nota arriba).
+// retraso: para que no giren todos sincronizados.
+//
+// OJO: a diferencia de CSS web, en React Native `left`/`top` posicionan la
+// esquina superior-izquierda del box, no el centro, y no existe
+// `transform: translate(-50%,-50%)` con porcentajes para compensarlo. Por
+// eso `left`/`top` se calculan restando la mitad del ancho/alto al centro
+// medido, en vez de usar el centro directamente (si no, cada icono queda
+// corrido en diagonal, tapando solo la mitad del icono horneado en la
+// imagen y dejando ver "doble" icono).
+const ICONOS_BASE = [
+  { id: 'bienestar', fuente: require('../../assets/icons/sprite_bienestar.png'), centroX: 29.3, centroY: 16.8, anchoPct: 19.5, altoPct: 13.0, vueltas: 2, retraso: 0 },
+  { id: 'fitness', fuente: require('../../assets/icons/sprite_fitness.png'), centroX: 78.1, centroY: 19.4, anchoPct: 20.5, altoPct: 13.7, vueltas: 3, retraso: 150 },
+  { id: 'gastronomia', fuente: require('../../assets/icons/sprite_gastronomia.png'), centroX: 11.7, centroY: 35.2, anchoPct: 20.5, altoPct: 13.7, vueltas: 2, retraso: 300 },
+  { id: 'tecnologia', fuente: require('../../assets/icons/sprite_tecnologia.png'), centroX: 89.4, centroY: 35.8, anchoPct: 20.5, altoPct: 13.7, vueltas: 3, retraso: 450 },
+  { id: 'musica', fuente: require('../../assets/icons/sprite_musica.png'), centroX: 17.1, centroY: 53.1, anchoPct: 20.5, altoPct: 13.7, vueltas: 2, retraso: 600 },
+  { id: 'lectura', fuente: require('../../assets/icons/sprite_lectura.png'), centroX: 82.5, centroY: 53.7, anchoPct: 20.5, altoPct: 13.7, vueltas: 3, retraso: 750 },
 ];
+
+const ICONOS = ICONOS_BASE.map((ic) => ({
+  ...ic,
+  left: `${ic.centroX - ic.anchoPct / 2}%`,
+  top: `${ic.centroY - ic.altoPct / 2}%`,
+  ancho: `${ic.anchoPct}%`,
+  alto: `${ic.altoPct}%`,
+}));
 
 const FASE_1_MS = 2000;
 const FASE_2_MS = 6000;
