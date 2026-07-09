@@ -21,3 +21,6 @@ mobile/.expo/
 # Editor
 .vscode/
 .idea/
+
+# Configuración local de Claude Code (permisos/sesión de esta máquina, no del proyecto)
+.claude/
