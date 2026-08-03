@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../config/db');
+const matchingRunner = require('../services/matchingRunner');
 
 const router = express.Router();
 
@@ -50,6 +51,11 @@ router.post('/', async (req, res, next) => {
       [comercio_id, anfitrion_id, grupo_id || null, titulo, descripcion || null, categoria || null, fecha_hora, capacidad, precio]
     );
     res.status(201).json(rows[0]);
+
+    // Oferta nueva sin grupo: puede haber un grupo completo esperando plan.
+    if (!grupo_id) {
+      matchingRunner.programarEnSegundoPlano(`evento publicado por el comercio ${comercio_id}`);
+    }
   } catch (err) {
     next(err);
   }

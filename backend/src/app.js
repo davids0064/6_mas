@@ -3,6 +3,7 @@ const cors = require('cors');
 
 const usuariosRouter = require('./routes/usuarios');
 const interesesRouter = require('./routes/intereses');
+const generosRouter = require('./routes/generos');
 const gruposRouter = require('./routes/grupos');
 const comerciosRouter = require('./routes/comercios');
 const anfitrionesRouter = require('./routes/anfitriones');
@@ -20,6 +21,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/intereses', interesesRouter);
+app.use('/api/generos', generosRouter);
 app.use('/api/grupos', gruposRouter);
 app.use('/api/comercios', comerciosRouter);
 app.use('/api/anfitriones', anfitrionesRouter);

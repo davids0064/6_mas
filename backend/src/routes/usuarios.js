@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
+const matchingRunner = require('../services/matchingRunner');
 
 const router = express.Router();
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
@@ -18,11 +19,13 @@ router.post('/', async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    // El email se normaliza (trim + minúsculas) para que el login sea
+    // insensible a mayúsculas sin importar desde qué cliente se registró.
     const { rows } = await db.query(
       `INSERT INTO usuarios (email, password_hash, nombre, fecha_nacimiento, genero, telefono)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${CAMPOS_PUBLICOS}`,
-      [email, passwordHash, nombre, fecha_nacimiento || null, genero || null, telefono || null]
+      [email.trim().toLowerCase(), passwordHash, nombre, fecha_nacimiento || null, genero || null, telefono || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -40,9 +43,11 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'email y password son obligatorios.' });
     }
 
+    // LOWER en ambos lados: el email es insensible a mayúsculas aunque el
+    // registro venga de un cliente viejo que no lo normalizara.
     const { rows } = await db.query(
-      'SELECT id, password_hash FROM usuarios WHERE email = $1 AND deleted_at IS NULL',
-      [email]
+      'SELECT id, password_hash FROM usuarios WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL',
+      [email.trim()]
     );
     const usuario = rows[0];
     const passwordValida = usuario && (await bcrypt.compare(password, usuario.password_hash));
@@ -135,6 +140,14 @@ router.post('/:id/test-personalidad', async (req, res, next) => {
     );
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
+
+    // Terminar el test es el momento en que el usuario entra al pool: es acá,
+    // y no en el registro, donde recién hay datos con qué puntuarlo. Se
+    // dispara después de responder y en segundo plano, porque el matching lee
+    // todo el pool y no debe hacer esperar a quien acaba de contestar 20
+    // preguntas. Si no hay 6 compatibles todavía, la corrida no hace nada y
+    // el usuario queda esperando al siguiente que complete el test.
+    matchingRunner.dispararEnSegundoPlano(`test de ${req.params.id}`);
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
@@ -178,7 +191,7 @@ router.put('/:id/intereses', async (req, res, next) => {
     await client.query('COMMIT');
 
     const { rows } = await db.query(
-      `SELECT i.* FROM intereses i
+      `SELECT i.* FROM pa_intereses i
        JOIN usuario_intereses ui ON ui.interes_id = i.id
        WHERE ui.usuario_id = $1`,
       [req.params.id]
