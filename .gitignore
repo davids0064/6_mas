@@ -4,6 +4,8 @@ node_modules/
 # Variables de entorno
 .env
 .env.local
+# Los .env.example SÍ se versionan: son la plantilla, sin secretos reales.
+!.env.example
 
 # Sistema
 .DS_Store
@@ -17,6 +19,16 @@ yarn-error.log*
 mobile/ios/
 mobile/android/
 mobile/.expo/
+
+# Artefactos de build del dashboard (dashboard/web/.gitignore ya cubre dist/ y
+# node_modules; esto es la red de seguridad por si se compila desde otra ruta)
+dashboard/web/dist/
+dashboard/api/vendor/
+
+# Los assets de marca se versionan ya extraídos en
+# mobile/assets/contenidoidentidaddemarcapaletadecolores/. El .zip original es
+# la misma información duplicada y binaria, así que no entra al repo.
+*.zip
 
 # Editor
 .vscode/
