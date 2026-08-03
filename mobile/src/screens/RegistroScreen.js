@@ -150,10 +150,12 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
   // Best-effort: los ids en datos.intereses ya son los ids reales de
   // pa_intereses (vienen del dropdown, no de un mapeo por nombre). Si falla,
   // el registro no se bloquea por esto.
-  const guardarIntereses = async (usuarioId) => {
+  const guardarIntereses = async () => {
     if (datos.intereses.length === 0) return;
     try {
-      await api.guardarInteresesUsuario(usuarioId, datos.intereses);
+      // No lleva usuarioId: el registro ya dejó la sesión iniciada y el
+      // backend saca de quién son los intereses a partir del token.
+      await api.guardarMisIntereses(datos.intereses);
     } catch {
       // El registro no se bloquea por los intereses.
     }
@@ -179,12 +181,12 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
         genero: datos.genero,
         telefono: datos.telefono.trim(),
       });
-      await guardarIntereses(usuario.id);
+      await guardarIntereses();
       if (onRegistrado) {
         onRegistrado(usuario);
         return;
       }
-      navigation?.navigate('TestPersonalidad', { usuarioId: usuario.id });
+      navigation?.navigate('TestPersonalidad');
     } catch (err) {
       setErrorGeneral(err.message);
     } finally {

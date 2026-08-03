@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import Animated, { FadeInDown, FadeInRight, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { api } from '../services/api';
+import { sesion } from '../services/sesion';
 import EncabezadoMarca from '../components/EncabezadoMarca';
 import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
 
@@ -236,8 +237,7 @@ function BarraProgreso({ progreso }) {
   );
 }
 
-export default function TestPersonalidadScreen({ route, navigation, onTerminado }) {
-  const usuarioId = route?.params?.usuarioId;
+export default function TestPersonalidadScreen({ navigation, onTerminado }) {
   const [indice, setIndice] = useState(0);
   const [respuestas, setRespuestas] = useState({});
   const [seleccion, setSeleccion] = useState(null);
@@ -269,20 +269,19 @@ export default function TestPersonalidadScreen({ route, navigation, onTerminado 
     setEnviando(true);
     setError(null);
     try {
-      // Sin usuarioId (p.ej. abriendo esta pantalla directo en desarrollo,
-      // sin pasar por el registro) no se llama al backend: la URL quedaría
-      // /api/usuarios/undefined/... y Postgres rechaza "undefined" como
-      // UUID. Se continúa el flujo sin persistir.
-      if (usuarioId) {
-        await api.enviarTestPersonalidad(usuarioId, todas, null);
+      // Sin sesión (p.ej. abriendo esta pantalla directo en desarrollo, sin
+      // pasar por el registro) no se llama al backend: respondería 401. Se
+      // continúa el flujo sin persistir.
+      if (sesion.haySesion()) {
+        await api.enviarTestPersonalidad(todas, null);
       } else {
-        console.warn('[TestPersonalidad] sin usuarioId: respuestas no persistidas');
+        console.warn('[TestPersonalidad] sin sesión: respuestas no persistidas');
       }
       if (onTerminado) {
         onTerminado();
         return;
       }
-      navigation?.navigate('Grupos', { usuarioId });
+      navigation?.navigate('Grupos');
     } catch (err) {
       setError(err.message);
       setSeleccion(null);

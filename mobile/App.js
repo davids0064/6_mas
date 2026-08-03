@@ -6,6 +6,10 @@
 //
 //   Registro → Bienvenida (botón "← Regresar" del encabezado)
 //
+// Las pantallas ya no se pasan el usuarioId entre sí: la sesión vive en
+// src/services/sesion.js y el backend deriva de quién son los datos a partir
+// del token. Por eso este componente solo lleva el nombre de la pantalla.
+//
 // Cuando se agregue react-navigation, este componente pasa a ser el stack
 // navigator con estas mismas rutas.
 import React, { useState } from 'react';
@@ -16,34 +20,29 @@ import TestPersonalidadScreen from './src/screens/TestPersonalidadScreen';
 import GruposScreen from './src/screens/GruposScreen';
 
 export default function App() {
-  const [pantalla, setPantalla] = useState({ nombre: 'bienvenida' });
+  const [pantalla, setPantalla] = useState('bienvenida');
 
-  if (pantalla.nombre === 'login') {
+  if (pantalla === 'login') {
     return (
       <LoginScreen
-        onLogin={(usuario) => setPantalla({ nombre: 'grupos', usuarioId: usuario.id })}
-        onIrARegistro={() => setPantalla({ nombre: 'registro' })}
+        onLogin={() => setPantalla('grupos')}
+        onIrARegistro={() => setPantalla('registro')}
       />
     );
   }
-  if (pantalla.nombre === 'registro') {
+  if (pantalla === 'registro') {
     return (
       <RegistroScreen
-        onRegistrado={(usuario) => setPantalla({ nombre: 'test', usuarioId: usuario.id })}
-        onVolver={() => setPantalla({ nombre: 'bienvenida' })}
+        onRegistrado={() => setPantalla('test')}
+        onVolver={() => setPantalla('bienvenida')}
       />
     );
   }
-  if (pantalla.nombre === 'test') {
-    return (
-      <TestPersonalidadScreen
-        route={{ params: { usuarioId: pantalla.usuarioId } }}
-        onTerminado={() => setPantalla({ nombre: 'grupos', usuarioId: pantalla.usuarioId })}
-      />
-    );
+  if (pantalla === 'test') {
+    return <TestPersonalidadScreen onTerminado={() => setPantalla('grupos')} />;
   }
-  if (pantalla.nombre === 'grupos') {
-    return <GruposScreen route={{ params: { usuarioId: pantalla.usuarioId } }} />;
+  if (pantalla === 'grupos') {
+    return <GruposScreen />;
   }
-  return <WelcomeAnimationScreen onFinish={() => setPantalla({ nombre: 'login' })} />;
+  return <WelcomeAnimationScreen onFinish={() => setPantalla('login')} />;
 }

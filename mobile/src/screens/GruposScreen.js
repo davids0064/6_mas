@@ -94,23 +94,33 @@ function AnilloGrupo({ miembros }) {
   );
 }
 
-export default function GruposScreen({ route }) {
-  const { grupoId, usuarioId } = route?.params || {};
+export default function GruposScreen() {
   const [grupo, setGrupo] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
 
+  // Ya no recibe ids por params. Antes esperaba un `grupoId` que App.js nunca
+  // le pasaba, así que la pantalla no llegaba a cargar nada; ahora el backend
+  // resuelve "mi grupo" desde el token.
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      if (grupoId) setGrupo(await api.obtenerGrupo(grupoId));
-      if (usuarioId) setUsuario(await api.obtenerUsuario(usuarioId));
+      // En paralelo: son dos consultas independientes y la pantalla necesita
+      // ambas para pintarse.
+      const [miGrupo, miPerfil] = await Promise.all([
+        api.obtenerMiGrupo(),
+        api.obtenerMiPerfil(),
+      ]);
+      // obtenerMiGrupo devuelve null (204) mientras el matching todavía no
+      // completó los 6: es el estado de espera, no un error.
+      setGrupo(miGrupo);
+      setUsuario(miPerfil);
     } catch {
       // Sin datos no se bloquea la pantalla: se muestra el estado de espera.
     } finally {
       setCargando(false);
     }
-  }, [grupoId, usuarioId]);
+  }, []);
 
   useEffect(() => {
     cargar();
