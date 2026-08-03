@@ -24,6 +24,18 @@
 require('dotenv').config({ path: `${__dirname}/../.env` });
 
 const API = process.env.API_URL || 'http://localhost:3000';
+
+// La siembra y el diagnóstico usan las rutas de administración, así que el
+// script necesita la misma clave que el backend. Se lee del .env del backend.
+const ADMIN_KEY = process.env.ADMIN_API_KEY;
+if (!ADMIN_KEY) {
+  console.error(
+    'Falta ADMIN_API_KEY en backend/.env. Es la clave con la que este script\n' +
+      'siembra comercios y consulta el estado del matching.'
+  );
+  process.exit(1);
+}
+
 const PREFIJO = 'prueba-match-';
 const MARCA = '[prueba match]';
 const LIMPIAR_AL_FINAL = process.argv.includes('--limpiar');
@@ -132,16 +144,45 @@ const PERFILES = [
   },
 ];
 
-async function pedir(metodo, ruta, cuerpo) {
+/**
+ * Hace una petición a la API.
+ *
+ * Sin `token` se autentica como administrador (X-Admin-Key), que es lo que
+ * necesitan las rutas de siembra y diagnóstico: crear comercios, listar grupos,
+ * consultar el pool. Con `token` se autentica como ese usuario, para las rutas
+ * /api/usuarios/yo/* — que es justamente el punto de la nueva autorización: ni
+ * siquiera este script puede escribir el test de personalidad de alguien sin
+ * tener su sesión.
+ */
+async function pedir(metodo, ruta, cuerpo, token) {
   const res = await fetch(`${API}${ruta}`, {
     method: metodo,
-    headers: cuerpo ? { 'Content-Type': 'application/json' } : undefined,
+    headers: {
+      ...(cuerpo ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : { 'X-Admin-Key': ADMIN_KEY }),
+    },
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
   });
   const texto = await res.text();
   let datos = null;
   try { datos = texto ? JSON.parse(texto) : null; } catch { datos = texto; }
   return { ok: res.ok, status: res.status, datos };
+}
+
+/**
+ * Registra un usuario y devuelve { id, token }.
+ *
+ * Corta con un mensaje explícito si la API no responde 201: un fallo de
+ * siembra que se arrastra aparece después como "Cannot read properties of
+ * undefined" veinte líneas más abajo, y ahí ya no se ve qué pasó realmente.
+ */
+async function registrar(cuerpo) {
+  const res = await pedir('POST', '/api/usuarios', cuerpo);
+  if (!res.ok || !res.datos || !res.datos.token) {
+    const detalle = res.datos && res.datos.error ? res.datos.error : JSON.stringify(res.datos);
+    throw new Error(`No se pudo registrar a ${cuerpo.email} (HTTP ${res.status}): ${detalle}`);
+  }
+  return { id: res.datos.usuario.id, token: res.datos.token };
 }
 
 const pct = (n) => `${(n * 100).toFixed(1)}%`;
@@ -226,13 +267,16 @@ async function main() {
 
   for (const [i, perfil] of PERFILES.entries()) {
     const email = `${PREFIJO}${i + 1}@seismas.test`;
-    const alta = (await pedir('POST', '/api/usuarios', {
+    // El registro deja la sesión iniciada, y con ese token se escriben los
+    // intereses y el test de ESE usuario: ni el script puede hacerlo por otro.
+    const alta = await registrar({
       email, password: 'prueba1234', nombre: perfil.nombre, genero: perfil.genero,
-    })).datos;
-    await pedir('PUT', `/api/usuarios/${alta.id}/intereses`, {
-      interes_ids: perfil.intereses.map((n) => idPorInteres[n]),
     });
-    await pedir('POST', `/api/usuarios/${alta.id}/test-personalidad`, { respuestas: perfil.respuestas });
+    await pedir('PUT', '/api/usuarios/yo/intereses', {
+      interes_ids: perfil.intereses.map((n) => idPorInteres[n]),
+    }, alta.token);
+    await pedir('POST', '/api/usuarios/yo/test-personalidad',
+      { respuestas: perfil.respuestas }, alta.token);
     usuarios.push({ ...perfil, id: alta.id, email });
 
     // Tras cada test, el backend dispara el matching en segundo plano.
@@ -321,13 +365,14 @@ async function main() {
   const faltan = 6 - sobrantes.candidatos.filter((c) => c.localidad === 'pereira').length;
   for (let i = 0; i < Math.max(faltan, 0); i++) {
     const email = `${PREFIJO}relleno${i}@seismas.test`;
-    const alta = (await pedir('POST', '/api/usuarios', {
+    const alta = await registrar({
       email, password: 'prueba1234', nombre: `Relleno ${i + 1}`,
-    })).datos;
-    await pedir('PUT', `/api/usuarios/${alta.id}/intereses`, { interes_ids: [idPorInteres['Gastronomía']] });
-    await pedir('POST', `/api/usuarios/${alta.id}/test-personalidad`, {
-      respuestas: { ...PERFILES[0].respuestas, localidad: 'pereira' },
     });
+    await pedir('PUT', '/api/usuarios/yo/intereses',
+      { interes_ids: [idPorInteres['Gastronomía']] }, alta.token);
+    await pedir('POST', '/api/usuarios/yo/test-personalidad', {
+      respuestas: { ...PERFILES[0].respuestas, localidad: 'pereira' },
+    }, alta.token);
   }
   const segundo = await esperarA(async () => {
     const gs = (await pedir('GET', '/api/grupos')).datos

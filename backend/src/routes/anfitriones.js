@@ -1,7 +1,13 @@
 const express = require('express');
 const db = require('../config/db');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Router de administración: los anfitriones son personal de los comercios y
+// sus datos de contacto no son públicos. El comercio los gestiona desde el
+// dashboard.
+router.use(exigirAdmin);
 
 router.get('/', async (req, res, next) => {
   try {

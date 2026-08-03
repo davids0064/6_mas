@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../config/db');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -18,8 +19,13 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// POST /api/intereses — alta de un interés en el catálogo (uso administrativo)
-router.post('/', async (req, res, next) => {
+// POST /api/intereses — alta de un interés en el catálogo.
+//
+// El GET de arriba queda público a propósito: el formulario de registro pinta
+// los chips de intereses antes de que exista ninguna sesión, y el catálogo no
+// es información sensible. Escribirlo sí es administrativo: un interés nuevo
+// cambia cómo se agrupa a la gente.
+router.post('/', exigirAdmin, async (req, res, next) => {
   try {
     const { nombre, icono, categoria, orden } = req.body;
     if (!nombre) return res.status(400).json({ error: 'nombre es obligatorio.' });

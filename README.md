@@ -64,8 +64,16 @@ en `db/DISEÑO.md`.
 cd backend
 cp .env.example .env   # ajusta DATABASE_URL a tu instancia local
 npm install
+
+# Genera los dos secretos y pégalos en el .env:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"  # JWT_SECRET
+node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"  # ADMIN_API_KEY
+
 npm run dev             # nodemon, recarga en caliente
 ```
+
+Sin `JWT_SECRET` el backend **no arranca**: se niega antes que firmar tokens
+con un secreto vacío que cualquiera podría replicar.
 
 Verifica que responde:
 
@@ -94,17 +102,48 @@ La guía detallada está en `mobile/README.md`. Resumen:
    (unicidad, tamaño de grupo = 6, rating 1-5) viven en el propio Postgres,
    así que cualquier cliente futuro del backend (panel web de comercios,
    jobs de matching) hereda las mismas garantías sin duplicarlas en código.
-2. **Backend → App móvil**: la app consume `/api/usuarios`, `/api/intereses`,
-   `/api/grupos`, `/api/eventos`, `/api/comercios`, `/api/anfitriones` y
-   `/api/feedback` vía `mobile/src/services/api.js`, apuntando a
-   `mobile/src/config/env.js` para resolver la URL correcta según si corre en
-   simulador o dispositivo físico.
+2. **Backend → App móvil**: la app consume las rutas públicas
+   (`POST /api/usuarios`, `POST /api/usuarios/login`, los catálogos) y, con el
+   token, las de `/api/usuarios/yo/*`, vía `mobile/src/services/api.js`,
+   apuntando a `mobile/src/config/env.js` para resolver la URL correcta según
+   si corre en simulador o dispositivo físico.
 3. **Flujo de usuario del MVP**: `RegistroScreen` (POST `/api/usuarios`) →
-   `TestPersonalidadScreen` (POST `/api/usuarios/:id/test-personalidad`) →
-   `GruposScreen` (GET `/api/grupos/:id`). La asignación a un grupo de 6 y el
-   emparejamiento con eventos de comercios los resuelve `/api/matching`
+   `TestPersonalidadScreen` (POST `/api/usuarios/yo/test-personalidad`) →
+   `GruposScreen` (GET `/api/usuarios/yo/grupo`). La asignación a un grupo de 6
+   y el emparejamiento con eventos de comercios los resuelve `/api/matching`
    (ver abajo), que corre por fuera del flujo interactivo: el usuario queda
    "en espera" hasta que hay 6 compatibles en su ciudad.
+
+## Autenticación
+
+Tres niveles, y la diferencia entre ellos es qué se puede hacer sin credencial:
+
+| Nivel | Cómo se prueba | Qué abre |
+| --- | --- | --- |
+| Público | nada | `POST /api/usuarios` (registro), `POST /api/usuarios/login`, `GET /api/intereses`, `GET /api/generos` |
+| Usuario | `Authorization: Bearer <token>` | `/api/usuarios/yo/*` — perfil, test, intereses, grupo, eventos; `POST /api/feedback` |
+| Administración | `X-Admin-Key: <clave>` | `/api/matching/*`, `/api/grupos/*`, `/api/eventos/*`, `/api/comercios/*`, `/api/anfitriones/*`, escritura de catálogos, `GET /api/feedback` |
+
+**El `usuario_id` sale siempre del token**, nunca del cuerpo ni de la URL — la
+misma regla que el dashboard aplica con `comercio_id`. Por eso las rutas
+propias son `/api/usuarios/yo/...` y no `/api/usuarios/:id/...`: si no existe la
+ruta con id, no existe la forma de pedir los datos de otra persona cambiando un
+parámetro. Registro y login devuelven `{ token, usuario }`.
+
+El nivel de administración usa una clave compartida por cabecera y no un rol
+dentro del JWT porque el esquema no tiene usuarios administradores: `usuarios`
+es la tabla de las personas que usan la app, y meterles un flag `es_admin`
+mezclaría dos cosas distintas. Si `ADMIN_API_KEY` no está configurada, esas
+rutas responden 503 y quedan cerradas — un despliegue al que se le olvidó la
+variable pierde la administración, nunca la expone.
+
+Detalles que importan: el token se firma con HS256 y se verifica exigiendo
+explícitamente ese algoritmo (aceptar el `alg` del propio token es la
+vulnerabilidad clásica `alg: none`); el emisor se valida, así que un token del
+dashboard no abre la API social aunque compartieran secreto; login y registro
+tienen rate limiting por IP con contadores separados; y el login responde el
+mismo mensaje ante "no existe" y "contraseña incorrecta" para no permitir
+enumerar correos registrados.
 
 ## Matching
 
@@ -204,6 +243,12 @@ node backend/scripts/prueba_match.js           # deja los datos
 node backend/scripts/prueba_match.js --limpiar # los borra al terminar
 ```
 
+Requiere `ADMIN_API_KEY` en `backend/.env`: la siembra y el diagnóstico usan
+rutas de administración. El script se registra como administrador para eso,
+pero escribe los intereses y el test de cada usuario **con el token de ese
+usuario** — ni él puede hacerlo por otra persona, que es justamente lo que la
+autorización garantiza.
+
 ## Decisiones de diseño relevantes (resumen)
 
 - **UUIDs en vez de IDs secuenciales** en todas las PK: evita filtrar volumen
@@ -217,10 +262,15 @@ node backend/scripts/prueba_match.js --limpiar # los borra al terminar
 - **`tests_personalidad` como historial 1:N con flag `vigente`**: conserva
   todos los intentos del usuario para si el algoritmo de matching necesita
   reentrenarse o comparar versiones del test.
-- **Sin JWT/OAuth en el MVP**: login simple con verificación de bcrypt
-  (`POST /api/usuarios/login`). Es una decisión explícita de alcance — añadir
-  JWT o sesiones después es un cambio de la capa de autenticación del
-  backend, no del esquema de datos.
+- **JWT sin refresh tokens ni OAuth**: el token dura 30 días y no se renueva;
+  cuando vence, se vuelve a entrar. Un esquema de refresh existe para poder
+  acortar la vida del token de acceso y poder revocarlo, y eso requiere
+  guardar sesiones en la base. Para el beta el costo de esa mesa no se paga
+  todavía; añadirlo después es un cambio de `config/jwt.js` y una tabla, no
+  del resto de la API.
+- **La sesión del móvil vive solo en memoria**: cerrar la app obliga a entrar
+  de nuevo. Persistirla necesita almacenamiento nativo (AsyncStorage y un
+  `pod install`), y el cambio queda contenido en `mobile/src/services/sesion.js`.
 - **Matching como servicio puro + ruta delgada**: `services/matching.js` no
   conoce Express ni SQL, así que se puede probar sin levantar nada y lo puede
   reusar un job nocturno o el panel de comercios sin pasar por HTTP. Cuando

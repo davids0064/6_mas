@@ -1,7 +1,17 @@
 const express = require('express');
 const db = require('../config/db');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Todo este router es de administración. Un usuario no crea grupos ni se une a
+// uno: el matching se lo asigna. Lo que la app necesita —cuál es mi grupo y
+// quiénes lo componen— lo sirve GET /api/usuarios/yo/grupo, que deriva el
+// grupo del token en vez de aceptar un id por la URL.
+//
+// Estas rutas quedan para operación y diagnóstico: listar el estado del
+// sistema, deshacer una asignación mala, cerrar un grupo a mano.
+router.use(exigirAdmin);
 
 // GET /api/grupos — lista grupos activos (no borrados)
 router.get('/', async (req, res, next) => {

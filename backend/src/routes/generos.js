@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../config/db');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -18,8 +19,11 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// POST /api/generos — alta de un género en el catálogo (uso administrativo)
-router.post('/', async (req, res, next) => {
+// POST /api/generos — alta de un género en el catálogo.
+//
+// El GET queda público por la misma razón que el de intereses: el dropdown del
+// registro se pinta antes de que exista sesión.
+router.post('/', exigirAdmin, async (req, res, next) => {
   try {
     const { nombre, icono, orden } = req.body;
     if (!nombre) return res.status(400).json({ error: 'nombre es obligatorio.' });

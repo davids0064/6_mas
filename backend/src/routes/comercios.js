@@ -1,8 +1,15 @@
 const express = require('express');
 const db = require('../config/db');
 const matchingRunner = require('../services/matchingRunner');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Router de administración. El canal por el que un comercio gestiona lo suyo
+// es el dashboard (dashboard/api), donde el comercio_id sale de su token y no
+// de la URL. Estas rutas son el acceso interno equivalente, y exponen datos de
+// negocio —qué comercios hay, qué planes tienen— que no son públicos.
+router.use(exigirAdmin);
 
 router.get('/', async (req, res, next) => {
   try {

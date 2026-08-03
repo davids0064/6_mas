@@ -1,8 +1,17 @@
 const express = require('express');
 const db = require('../config/db');
 const matchingRunner = require('../services/matchingRunner');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Router de administración. Los comercios gestionan sus eventos desde el
+// dashboard (API PHP, con su propio token y el comercio_id sacado de él), y la
+// app consulta los suyos por GET /api/usuarios/yo/eventos.
+//
+// El filtro ?grupo_id= que usaba la app quedaba abierto: cambiar el id dejaba
+// leer la agenda de cualquier grupo. Por eso deja de ser una ruta pública.
+router.use(exigirAdmin);
 
 // GET /api/eventos — soporta filtro opcional ?grupo_id= y ?comercio_id=
 router.get('/', async (req, res, next) => {

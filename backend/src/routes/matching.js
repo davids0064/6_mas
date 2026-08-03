@@ -3,8 +3,18 @@ const db = require('../config/db');
 const matching = require('../services/matching');
 const programacion = require('../services/programacion');
 const runner = require('../services/matchingRunner');
+const { exigirAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Todo el router es de administración, y es el más sensible de la API: expone
+// el pool de candidatos con sus perfiles, permite ver la afinidad entre dos
+// personas concretas y puede formar o reprogramar grupos reales.
+//
+// El matching corre solo (lo disparan el fin del test y la publicación de
+// oferta); estas rutas existen para simular, diagnosticar y forzar, que son
+// operaciones internas.
+router.use(exigirAdmin);
 
 /** Lee las opciones del body/query y las normaliza. */
 function leerOpciones(req) {
