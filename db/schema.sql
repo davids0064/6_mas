@@ -71,23 +71,64 @@ CREATE UNIQUE INDEX ux_tests_personalidad_vigente
 CREATE INDEX ix_tests_personalidad_usuario_id ON tests_personalidad (usuario_id);
 
 -- ============================================================================
--- INTERESES (catálogo controlado) + USUARIO_INTERESES (N:M)
+-- PA_INTERESES (tabla paramétrica: catálogo de intereses editable sin
+-- desplegar app ni backend — agregar un interés nuevo es un INSERT acá) +
+-- USUARIO_INTERESES (N:M)
 -- ============================================================================
-CREATE TABLE intereses (
+CREATE TABLE pa_intereses (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre      TEXT NOT NULL UNIQUE,
+    -- Emoji mostrado en los chips/dropdown del mobile (ver
+    -- mobile/src/screens/RegistroScreen.js). Al ser dato y no código, un
+    -- interés nuevo con su ícono se agrega con un INSERT, sin recompilar.
+    icono       TEXT NOT NULL DEFAULT '✨',
     categoria   TEXT,
+    orden       INT NOT NULL DEFAULT 0,
+    activo      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Catálogo inicial (los mismos 6 intereses que ya usaba el mobile a mano).
+INSERT INTO pa_intereses (nombre, icono, orden) VALUES
+    ('Música',       '🎵', 1),
+    ('Deporte',       '🏋️', 2),
+    ('Gastronomía',   '🍽️', 3),
+    ('Lectura',       '📚', 4),
+    ('Bienestar',     '🧘', 5),
+    ('Tecnología',    '💻', 6);
+
 CREATE TABLE usuario_intereses (
     usuario_id  UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    interes_id  UUID NOT NULL REFERENCES intereses(id) ON DELETE CASCADE,
+    interes_id  UUID NOT NULL REFERENCES pa_intereses(id) ON DELETE CASCADE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (usuario_id, interes_id)
 );
 
 CREATE INDEX ix_usuario_intereses_interes_id ON usuario_intereses (interes_id);
+
+-- ============================================================================
+-- PA_GENEROS (tabla paramétrica: catálogo de géneros editable sin desplegar
+-- app ni backend). usuarios.genero sigue siendo TEXT libre (no FK) — guarda
+-- el `nombre` elegido acá, así no hay que migrar datos existentes si el
+-- catálogo cambia.
+-- ============================================================================
+CREATE TABLE pa_generos (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre      TEXT NOT NULL UNIQUE,
+    -- Emoji mostrado en el dropdown del mobile (ver
+    -- mobile/src/screens/RegistroScreen.js). Un género nuevo con su ícono se
+    -- agrega con un INSERT, sin recompilar.
+    icono       TEXT NOT NULL DEFAULT '👤',
+    orden       INT NOT NULL DEFAULT 0,
+    activo      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Catálogo inicial (los mismos 3 géneros que ya usaba el mobile a mano).
+INSERT INTO pa_generos (nombre, icono, orden) VALUES
+    ('Femenino',  '👩', 1),
+    ('Masculino', '👨', 2),
+    ('Otro',      '🌈', 3);
 
 -- ============================================================================
 -- GRUPOS + GRUPO_MIEMBROS (N:M, tamaño máximo 6 forzado por trigger)
@@ -141,7 +182,7 @@ CREATE TRIGGER trg_grupo_miembros_max_6
 -- ============================================================================
 CREATE TABLE grupo_intereses (
     grupo_id    UUID NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
-    interes_id  UUID NOT NULL REFERENCES intereses(id) ON DELETE CASCADE,
+    interes_id  UUID NOT NULL REFERENCES pa_intereses(id) ON DELETE CASCADE,
     -- peso = cuántos miembros del grupo comparten este interés; útil para el
     -- futuro algoritmo de matching sin recalcular sobre usuario_intereses.
     peso        INT NOT NULL DEFAULT 1 CHECK (peso >= 1),
