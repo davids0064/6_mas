@@ -1,0 +1,79 @@
+/* Estilos compartidos por las pantallas de acceso (entrar y registro).
+   Encabezado en el rojo oficial de marca y formulario sobre tarjeta blanca:
+   el contraste que define la identidad. */
+
+.acceso {
+  min-height: 100vh;
+  background: var(--superficie);
+  display: flex;
+  flex-direction: column;
+}
+
+.acceso-encabezado {
+  background: var(--rojo);
+  color: var(--blanco);
+  padding: var(--e-l) var(--e-l) 64px;
+  text-align: center;
+}
+
+.acceso-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-s);
+  color: var(--blanco);
+  font-size: 19px;
+  font-weight: 800;
+  text-decoration: none;
+  margin-bottom: var(--e-l);
+}
+.acceso-marca:hover { text-decoration: none; }
+.acceso-marca img { width: 34px; height: 34px; object-fit: contain; }
+
+.acceso-encabezado h1 { font-size: 26px; font-weight: 800; margin-bottom: var(--e-s); }
+.acceso-encabezado p { color: rgba(255, 255, 255, 0.85); font-size: 15px; }
+
+.acceso-cuerpo {
+  flex: 1;
+  padding: 0 var(--e-m) var(--e-xl);
+  /* El formulario sube sobre el encabezado, como la tarjeta del registro
+     móvil: da sensación de continuidad en vez de dos bloques apilados. */
+  margin-top: -40px;
+}
+
+.acceso-tarjeta {
+  background: var(--blanco);
+  border-radius: var(--r-tarjeta);
+  box-shadow: var(--sombra-alta);
+  padding: var(--e-l);
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+}
+.acceso-tarjeta.ancha { max-width: 640px; }
+
+.acceso-pie {
+  text-align: center;
+  padding: var(--e-l) var(--e-m) var(--e-xl);
+  font-size: 14px;
+  color: var(--texto-suave);
+}
+
+.nota-confianza {
+  margin-top: var(--e-m);
+  text-align: center;
+  font-size: 13px;
+  color: var(--texto-tenue);
+  line-height: 1.5;
+}
+
+/* Separador de grupos de campos dentro del registro */
+.grupo-campos { margin-bottom: var(--e-l); }
+.grupo-campos > h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--texto);
+  margin-bottom: var(--e-s);
+  padding-bottom: var(--e-s);
+  border-bottom: 1px solid var(--borde);
+}
+.grupo-campos .opcional { font-weight: 400; color: var(--texto-tenue); font-size: 13px; }

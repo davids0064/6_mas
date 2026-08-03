@@ -1,0 +1,86 @@
+/* Portada sobre negro, con el rojo de marca reservado para el CTA. Es el
+   contraste que define la identidad: negro, rojo y blanco, sin intermedios. */
+
+.contenedor {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--e-l);
+}
+
+.barra {
+  background: var(--negro);
+  padding: var(--e-m) 0;
+}
+.barra-interna {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-m);
+}
+.marca-barra {
+  display: flex;
+  align-items: center;
+  gap: var(--e-s);
+  color: var(--blanco);
+  font-size: 19px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.marca-barra img { width: 34px; height: 34px; object-fit: contain; }
+.marca-barra:hover { text-decoration: none; }
+
+.enlace-claro { color: var(--blanco); }
+.enlace-claro:hover { text-decoration: none; color: var(--blanco); opacity: 0.75; }
+
+.portada {
+  background: var(--negro);
+  color: var(--blanco);
+  padding: 84px 0 96px;
+}
+.portada-interna { max-width: 720px; }
+
+.etiqueta-portada {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: var(--r-pildora);
+  /* Único elemento rojo además del CTA: marca de qué va la página. */
+  background: var(--rojo);
+  border: 1px solid var(--rojo);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-bottom: var(--e-l);
+}
+
+.titulo-portada { line-height: 1.12; margin-bottom: var(--e-l); }
+
+.subtitulo-portada {
+  font-size: 18px;
+  line-height: 1.6;
+  /* Blanco atenuado: jerarquía por opacidad, no por un color nuevo. */
+  color: rgba(255, 255, 255, 0.78);
+  margin-bottom: var(--e-xl);
+}
+
+.acciones-portada { gap: var(--e-m); }
+
+.bloque { padding: 72px 0; }
+.bloque-claro { background: var(--superficie); }
+
+.emoji-paso { font-size: 32px; display: block; margin-bottom: var(--e-s); }
+.titulo-tarjeta { font-size: 17px; margin-bottom: var(--e-xs); }
+
+.pie {
+  background: var(--negro);
+  color: rgba(255, 255, 255, 0.72);
+  padding: var(--e-l) 0;
+}
+.pie a { color: var(--blanco); }
+
+@media (max-width: 640px) {
+  .portada { padding: 56px 0 64px; }
+  .titulo-portada { font-size: 34px; }
+  .subtitulo-portada { font-size: 16px; }
+  .bloque { padding: 48px 0; }
+  .barra-interna { flex-direction: column; align-items: flex-start; }
+}

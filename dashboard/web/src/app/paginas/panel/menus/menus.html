@@ -1,0 +1,112 @@
+<div class="encabezado-pagina">
+  <div>
+    <h1 class="t-titulo">Menús</h1>
+    <p class="t-subtitulo mt-m">Solo los menús publicados se muestran a los grupos.</p>
+  </div>
+  <button type="button" class="boton boton-cta" (click)="abrirModal()">+ Nuevo menú</button>
+</div>
+
+@if (error()) {
+  <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+}
+
+@if (cargando()) {
+  <div class="cargando">Cargando tus menús…</div>
+} @else if (menus().length === 0) {
+  <div class="vacio">
+    <span class="emoji">📖</span>
+    Todavía no tienes menús.
+    <div class="mt-m">
+      <button type="button" class="boton boton-primario boton-pequeno" (click)="abrirModal()">
+        Crear mi primer menú
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="rejilla rejilla-2">
+    @for (menu of menus(); track menu.id) {
+      <article class="tarjeta">
+        <div class="linea-separada">
+          <h2 class="t-etiqueta">{{ menu.nombre }}</h2>
+          <span [class]="claseEstado(menu.estado)">{{ menu.estado }}</span>
+        </div>
+
+        @if (menu.descripcion) {
+          <p class="t-subtitulo mt-m">{{ menu.descripcion }}</p>
+        }
+
+        <p class="t-ayuda tenue mt-m">
+          {{ menu.total_secciones }} {{ menu.total_secciones === 1 ? 'sección' : 'secciones' }} ·
+          {{ menu.total_items }} {{ menu.total_items === 1 ? 'plato' : 'platos' }}
+        </p>
+
+        <div class="linea mt-m">
+          <a [routerLink]="['/panel/menus', menu.id]" class="boton boton-primario boton-pequeno">
+            Editar
+          </a>
+
+          @if (menu.estado === 'publicado') {
+            <button
+              type="button"
+              class="boton boton-secundario boton-pequeno"
+              (click)="cambiarEstado(menu, 'borrador')"
+            >
+              Despublicar
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="boton boton-secundario boton-pequeno"
+              (click)="cambiarEstado(menu, 'publicado')"
+            >
+              Publicar
+            </button>
+          }
+
+          <button type="button" class="boton boton-peligro boton-pequeno" (click)="eliminar(menu)">
+            Eliminar
+          </button>
+        </div>
+      </article>
+    }
+  </div>
+}
+
+@if (modalAbierto()) {
+  <div class="fondo-modal" (click)="modalAbierto.set(false)">
+    <!-- stopPropagation: hacer clic dentro del modal no debe cerrarlo -->
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2 class="t-etiqueta">Nuevo menú</h2>
+
+      <div class="campo mt-m">
+        <label for="nombre-menu">Nombre</label>
+        <input
+          id="nombre-menu"
+          type="text"
+          [(ngModel)]="nombreNuevo"
+          placeholder="Carta principal"
+          (keyup.enter)="crear()"
+        />
+      </div>
+
+      <div class="campo">
+        <label for="desc-menu">Descripción (opcional)</label>
+        <input id="desc-menu" type="text" [(ngModel)]="descripcionNueva" placeholder="Nuestra carta de siempre" />
+      </div>
+
+      <div class="linea mt-m">
+        <button
+          type="button"
+          class="boton boton-cta"
+          (click)="crear()"
+          [disabled]="creando() || !nombreNuevo.trim()"
+        >
+          {{ creando() ? 'Creando…' : 'Crear y editar' }}
+        </button>
+        <button type="button" class="boton boton-secundario" (click)="modalAbierto.set(false)">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+}

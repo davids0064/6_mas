@@ -1,0 +1,147 @@
+<div class="encabezado-pagina">
+  <div>
+    <h1 class="t-titulo">Propuestas de bienvenida</h1>
+    <p class="t-subtitulo mt-m">La experiencia con la que recibes a un grupo de seis.</p>
+  </div>
+  <button type="button" class="boton boton-cta" (click)="nueva()">+ Nueva propuesta</button>
+</div>
+
+@if (error()) {
+  <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+}
+
+@if (cargando()) {
+  <div class="cargando">Cargando…</div>
+} @else if (propuestas().length === 0) {
+  <div class="vacio">
+    <span class="emoji">🎁</span>
+    Aún no tienes propuestas de bienvenida.
+    <p class="t-ayuda mt-m">
+      Una bebida de bienvenida, una tabla para compartir, la mesa del patio reservada dos horas…
+      eso es una propuesta.
+    </p>
+    <div class="mt-m">
+      <button type="button" class="boton boton-primario boton-pequeno" (click)="nueva()">
+        Crear mi primera propuesta
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="rejilla rejilla-2">
+    @for (propuesta of propuestas(); track propuesta.id) {
+      <article class="tarjeta">
+        <div class="linea-separada">
+          <h2 class="t-etiqueta">{{ propuesta.titulo }}</h2>
+          @if (propuesta.activa) {
+            <span class="chip chip-exito">Activa</span>
+          } @else {
+            <span class="chip chip-neutro">Inactiva</span>
+          }
+        </div>
+
+        @if (propuesta.descripcion) {
+          <p class="t-subtitulo mt-m">{{ propuesta.descripcion }}</p>
+        }
+
+        @if (propuesta.incluye.length > 0) {
+          <ul class="lista-incluye mt-m">
+            @for (elemento of propuesta.incluye; track elemento) {
+              <li>{{ elemento }}</li>
+            }
+          </ul>
+        }
+
+        <div class="linea mt-m">
+          <span class="chip chip-neutro">
+            ${{ propuesta.precio_persona.toLocaleString('es-CO') }} por persona
+          </span>
+          @if (propuesta.duracion_min) {
+            <span class="chip chip-neutro">{{ propuesta.duracion_min }} min</span>
+          }
+        </div>
+
+        <div class="linea mt-m">
+          <button type="button" class="boton boton-primario boton-pequeno" (click)="editar(propuesta)">
+            Editar
+          </button>
+          <button
+            type="button"
+            class="boton boton-secundario boton-pequeno"
+            (click)="alternarActiva(propuesta)"
+          >
+            {{ propuesta.activa ? 'Desactivar' : 'Activar' }}
+          </button>
+          <button type="button" class="boton boton-peligro boton-pequeno" (click)="eliminar(propuesta)">
+            Eliminar
+          </button>
+        </div>
+      </article>
+    }
+  </div>
+}
+
+@if (modalAbierto()) {
+  <div class="fondo-modal" (click)="modalAbierto.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2 class="t-etiqueta">
+        {{ editando() ? 'Editar propuesta' : 'Nueva propuesta de bienvenida' }}
+      </h2>
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate class="mt-m">
+        <div class="campo" [class.invalido]="falla('titulo')">
+          <label for="titulo">Título</label>
+          <input id="titulo" type="text" formControlName="titulo" placeholder="Bienvenida Botánico" />
+          @if (falla('titulo')) {
+            <span class="mensaje-error">Ponle un nombre a tu propuesta.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="descripcion">Descripción</label>
+          <textarea
+            id="descripcion"
+            formControlName="descripcion"
+            placeholder="Recibimos al grupo con la mesa del patio lista y una ronda de cortesía."
+          ></textarea>
+        </div>
+
+        <div class="campo">
+          <label for="incluye">¿Qué incluye?</label>
+          <textarea
+            id="incluye"
+            formControlName="incluye"
+            placeholder="Bebida de bienvenida&#10;Tabla para compartir&#10;Mesa reservada 2 horas"
+          ></textarea>
+          <span class="t-ayuda tenue">Una línea por elemento.</span>
+        </div>
+
+        <div class="fila-campos">
+          <div class="campo">
+            <label for="precio">Precio por persona</label>
+            <input id="precio" type="number" min="0" formControlName="precio_persona" />
+          </div>
+          <div class="campo">
+            <label for="duracion">Duración (minutos)</label>
+            <input id="duracion" type="number" min="1" formControlName="duracion_min" placeholder="120" />
+          </div>
+        </div>
+
+        <div class="campo">
+          <label class="linea">
+            <input type="checkbox" formControlName="activa" class="casilla" />
+            <span>Activa — visible para los grupos</span>
+          </label>
+        </div>
+
+        <div class="linea mt-m">
+          <button type="submit" class="boton boton-cta" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
+          <button type="button" class="boton boton-secundario" (click)="modalAbierto.set(false)">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

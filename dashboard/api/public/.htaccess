@@ -1,0 +1,16 @@
+# Front controller: todo lo que no sea un archivo real va a index.php.
+RewriteEngine On
+
+# Apache con CGI/FastCGI no propaga la cabecera Authorization a PHP; sin esta
+# línea el JWT nunca llega y toda la API responde 401.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# El .env y el código fuente nunca deben servirse como archivo estático.
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>

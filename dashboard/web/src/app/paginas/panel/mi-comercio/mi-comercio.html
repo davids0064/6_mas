@@ -1,0 +1,95 @@
+<div class="encabezado-pagina">
+  <div>
+    <h1 class="t-titulo">Mi comercio</h1>
+    <p class="t-subtitulo mt-m">Así es como te ven los grupos que van a visitarte.</p>
+  </div>
+</div>
+
+@if (cargando()) {
+  <div class="cargando">Cargando…</div>
+} @else {
+  <div class="tarjeta formulario-ancho">
+    @if (error()) {
+      <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+    }
+    @if (guardado()) {
+      <div class="aviso aviso-exito">✓ Cambios guardados.</div>
+    }
+
+    <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+      <div class="campo" [class.invalido]="falla('nombre')">
+        <label for="nombre">Nombre del comercio</label>
+        <input id="nombre" type="text" formControlName="nombre" />
+        @if (falla('nombre')) {
+          <span class="mensaje-error">El nombre no puede quedar vacío.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="descripcion">Descripción</label>
+        <textarea
+          id="descripcion"
+          formControlName="descripcion"
+          placeholder="Un café de barrio con patio interior, ideal para conversar sin gritar."
+        ></textarea>
+        <span class="t-ayuda tenue">Esto es lo primero que lee el grupo sobre tu lugar.</span>
+      </div>
+
+      <div class="fila-campos">
+        <div class="campo">
+          <label for="categoria">Categoría</label>
+          <select id="categoria" formControlName="categoria">
+            <option value="">Elige una…</option>
+            @for (categoria of categorias; track categoria) {
+              <option [value]="categoria">{{ categoria }}</option>
+            }
+          </select>
+        </div>
+        <div class="campo">
+          <label for="telefono">Teléfono</label>
+          <input id="telefono" type="tel" formControlName="telefono" />
+        </div>
+      </div>
+
+      <div class="fila-campos">
+        <div class="campo">
+          <label for="ciudad">Ciudad</label>
+          <input id="ciudad" type="text" formControlName="ciudad" placeholder="Bogotá" />
+        </div>
+        <div class="campo">
+          <label for="nit">NIT</label>
+          <input id="nit" type="text" formControlName="nit" />
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="direccion">Dirección</label>
+        <input id="direccion" type="text" formControlName="direccion" placeholder="Cra 7 # 45-12" />
+        <span class="t-ayuda tenue">Es lo único de tu ficha que el grupo necesita para llegar.</span>
+      </div>
+
+      <div class="fila-campos">
+        <div class="campo">
+          <label for="horario">Horario</label>
+          <input id="horario" type="text" formControlName="horario" placeholder="Lun–Sáb, 12:00–22:00" />
+        </div>
+        <div class="campo">
+          <label for="sitio_web">Sitio web</label>
+          <input id="sitio_web" type="url" formControlName="sitio_web" placeholder="https://…" />
+        </div>
+      </div>
+
+      <div class="campo">
+        <label>Correo de acceso</label>
+        <!-- Deshabilitado a propósito: es la credencial de entrada y cambiarla
+             necesita su propio flujo con verificación. -->
+        <input type="email" [value]="email()" disabled />
+        <span class="t-ayuda tenue">Para cambiar tu correo de acceso, escríbenos.</span>
+      </div>
+
+      <button type="submit" class="boton boton-cta" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+      </button>
+    </form>
+  </div>
+}

@@ -1,0 +1,135 @@
+<div class="acceso">
+  <header class="acceso-encabezado">
+    <a routerLink="/" class="acceso-marca">
+      <img src="logo_blanco.png" alt="" aria-hidden="true" />
+      <span>Seis Más</span>
+    </a>
+    <h1>Registra tu comercio</h1>
+    <p>¡Estás a un paso de recibir tu primer grupo! 🎉</p>
+  </header>
+
+  <main class="acceso-cuerpo">
+    <div class="acceso-tarjeta ancha">
+      @if (error()) {
+        <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="registrar()" novalidate>
+        <div class="grupo-campos">
+          <h2>Tu comercio</h2>
+
+          <div class="campo" [class.invalido]="falla('nombre')" [class.valido]="correcto('nombre')">
+            <label for="nombre">
+              Nombre del comercio
+              @if (correcto('nombre')) { <span class="marca-ok">✓</span> }
+            </label>
+            <input id="nombre" type="text" formControlName="nombre" placeholder="Café Botánico" />
+            @if (falla('nombre')) {
+              <span class="mensaje-error">Cuéntanos cómo se llama tu comercio.</span>
+            }
+          </div>
+
+          <div class="campo" [class.invalido]="falla('email')" [class.valido]="correcto('email')">
+            <label for="email">
+              Correo
+              @if (correcto('email')) { <span class="marca-ok">✓</span> }
+            </label>
+            <input
+              id="email"
+              type="email"
+              formControlName="email"
+              placeholder="hola@tucomercio.com"
+              autocomplete="email"
+            />
+            @if (falla('email')) {
+              <span class="mensaje-error">Escribe un correo válido: con él vas a entrar al panel.</span>
+            }
+          </div>
+
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="telefono">Teléfono <span class="opcional">(opcional)</span></label>
+              <input id="telefono" type="tel" formControlName="telefono" placeholder="300 123 4567" />
+            </div>
+
+            <div class="campo">
+              <label for="categoria">Categoría <span class="opcional">(opcional)</span></label>
+              <select id="categoria" formControlName="categoria">
+                <option value="">Elige una…</option>
+                @for (categoria of categorias; track categoria) {
+                  <option [value]="categoria">{{ categoria }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grupo-campos">
+          <h2>Dónde te encuentran <span class="opcional">— puedes completarlo después</span></h2>
+
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="ciudad">Ciudad</label>
+              <input id="ciudad" type="text" formControlName="ciudad" placeholder="Bogotá" />
+            </div>
+            <div class="campo">
+              <label for="nit">NIT</label>
+              <input id="nit" type="text" formControlName="nit" placeholder="900123456-7" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label for="direccion">Dirección</label>
+            <input id="direccion" type="text" formControlName="direccion" placeholder="Cra 7 # 45-12" />
+          </div>
+        </div>
+
+        <div class="grupo-campos">
+          <h2>Tu contraseña</h2>
+
+          <div class="campo" [class.invalido]="falla('password')" [class.valido]="correcto('password')">
+            <label for="password">
+              Contraseña
+              @if (correcto('password')) { <span class="marca-ok">✓</span> }
+            </label>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              placeholder="Mínimo 8 caracteres"
+              autocomplete="new-password"
+            />
+            @if (falla('password')) {
+              <span class="mensaje-error">Usa al menos 8 caracteres.</span>
+            }
+          </div>
+
+          <div class="campo" [class.invalido]="falla('confirmacion') || passwordsNoCoinciden">
+            <label for="confirmacion">Repite la contraseña</label>
+            <input
+              id="confirmacion"
+              type="password"
+              formControlName="confirmacion"
+              placeholder="La misma de arriba"
+              autocomplete="new-password"
+            />
+            @if (passwordsNoCoinciden) {
+              <span class="mensaje-error">Las contraseñas no coinciden.</span>
+            } @else if (falla('confirmacion')) {
+              <span class="mensaje-error">Repite la contraseña para confirmar.</span>
+            }
+          </div>
+        </div>
+
+        <button type="submit" class="boton boton-cta boton-bloque" [disabled]="enviando()">
+          {{ enviando() ? 'Creando tu cuenta…' : 'Crear cuenta' }}
+        </button>
+      </form>
+
+      <p class="nota-confianza">
+        Solo usamos estos datos para conectarte con grupos.<br />
+        ¿Ya tienes cuenta? <a routerLink="/entrar">Inicia sesión</a>
+      </p>
+    </div>
+  </main>
+</div>

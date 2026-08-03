@@ -1,0 +1,126 @@
+<div class="encabezado-pagina">
+  <div>
+    <h1 class="t-titulo">Anfitriones</h1>
+    <p class="t-subtitulo mt-m">Quién recibe a los grupos cuando llegan a tu comercio.</p>
+  </div>
+  <button type="button" class="boton boton-cta" (click)="nuevo()">+ Nuevo anfitrión</button>
+</div>
+
+@if (error()) {
+  <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+}
+
+@if (cargando()) {
+  <div class="cargando">Cargando…</div>
+} @else if (anfitriones().length === 0) {
+  <div class="vacio">
+    <span class="emoji">🤝</span>
+    Todavía no has definido quién recibe a los grupos.
+    <p class="t-ayuda mt-m">
+      El anfitrión es la persona que saluda, acomoda al grupo y rompe el hielo. Sin uno no puedes
+      crear eventos.
+    </p>
+    <div class="mt-m">
+      <button type="button" class="boton boton-primario boton-pequeno" (click)="nuevo()">
+        Definir anfitrión
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="rejilla rejilla-2">
+    @for (anfitrion of anfitriones(); track anfitrion.id) {
+      <article class="tarjeta">
+        <div class="linea-separada">
+          <h2 class="t-etiqueta">{{ anfitrion.nombre }}</h2>
+          @if (anfitrion.titular) {
+            <span class="chip chip-exito">Titular</span>
+          }
+        </div>
+
+        <p class="t-subtitulo mt-m">{{ anfitrion.email }}</p>
+        @if (anfitrion.telefono) {
+          <p class="t-ayuda suave">{{ anfitrion.telefono }}</p>
+        }
+        @if (anfitrion.bio) {
+          <p class="t-subtitulo mt-m">{{ anfitrion.bio }}</p>
+        }
+
+        <div class="linea mt-m">
+          <button type="button" class="boton boton-primario boton-pequeno" (click)="editar(anfitrion)">
+            Editar
+          </button>
+          @if (!anfitrion.titular) {
+            <button
+              type="button"
+              class="boton boton-secundario boton-pequeno"
+              (click)="hacerTitular(anfitrion)"
+            >
+              Hacer titular
+            </button>
+          }
+          <button type="button" class="boton boton-peligro boton-pequeno" (click)="eliminar(anfitrion)">
+            Eliminar
+          </button>
+        </div>
+      </article>
+    }
+  </div>
+}
+
+@if (modalAbierto()) {
+  <div class="fondo-modal" (click)="modalAbierto.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2 class="t-etiqueta">{{ editando() ? 'Editar anfitrión' : 'Nuevo anfitrión' }}</h2>
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate class="mt-m">
+        <div class="campo" [class.invalido]="falla('nombre')">
+          <label for="nombre">Nombre</label>
+          <input id="nombre" type="text" formControlName="nombre" placeholder="Laura Restrepo" />
+          @if (falla('nombre')) {
+            <span class="mensaje-error">Escribe el nombre de la persona.</span>
+          }
+        </div>
+
+        <div class="campo" [class.invalido]="falla('email')">
+          <label for="email">Correo</label>
+          <input id="email" type="email" formControlName="email" placeholder="laura@tucomercio.com" />
+          @if (falla('email')) {
+            <span class="mensaje-error">Escribe un correo válido.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="telefono">Teléfono (opcional)</label>
+          <input id="telefono" type="tel" formControlName="telefono" />
+        </div>
+
+        <div class="campo">
+          <label for="bio">Presentación (opcional)</label>
+          <textarea
+            id="bio"
+            formControlName="bio"
+            placeholder="Barista hace ocho años. Le encanta recomendar el café del día."
+          ></textarea>
+          <span class="t-ayuda tenue">Esto es lo que el grupo lee antes de llegar.</span>
+        </div>
+
+        <div class="campo">
+          <label class="linea">
+            <input type="checkbox" formControlName="titular" class="casilla" />
+            <span>Es el anfitrión titular del comercio</span>
+          </label>
+          <span class="t-ayuda tenue">Solo puede haber uno; el anterior deja de serlo.</span>
+        </div>
+
+        <div class="linea mt-m">
+          <button type="submit" class="boton boton-cta" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
+          <button type="button" class="boton boton-secundario" (click)="modalAbierto.set(false)">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

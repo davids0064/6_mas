@@ -1,0 +1,491 @@
+/* ===========================================================================
+   Seis Más — Sistema de diseño del dashboard web.
+
+   PALETA OFICIAL DE MARCA (assets/contenidoidentidaddemarcapaletadecolores,
+   lámina "Concepto cromático & paleta de colores"). Son tres colores y nada
+   más:
+
+     Negro   #000000   RGB 0,0,0        C91 M79 Y62 K97
+     Rojo    #AD191A   RGB 173,25,26    C21 M100 Y98 K15
+     Blanco  #FFFFFF   RGB 255,255,255  C0 M0 Y0 K0
+
+   Los azules y naranjas que se usaban antes venían MUESTREADOS de la
+   ilustración home_1.png, que es una pieza gráfica, no la identidad. Se
+   eliminaron de aquí.
+
+   Los grises son tonos del negro (misma tinta, distinta opacidad), no colores
+   nuevos: por eso jerarquizan sin ensuciar la paleta.
+   =========================================================================== */
+
+:root {
+  /* --- Marca: los tres colores oficiales --- */
+  --negro: #000000;
+  --rojo: #ad191a;
+  --blanco: #ffffff;
+
+  /* Rojo oscurecido para hover/activo. No es un color nuevo: es el mismo
+     #AD191A con menos luminosidad. */
+  --rojo-oscuro: #8a1415;
+  --rojo-tenue: rgba(173, 25, 26, 0.08); /* fondos de énfasis muy suaves */
+
+  /* --- Neutros: tonos del negro --- */
+  --gris-900: #141414;
+  --gris-700: #4a4a4a;
+  --gris-500: #7a7a7a;
+  --gris-200: #e4e4e6;
+  --gris-100: #f5f5f6;
+
+  /* --- Semánticos --- */
+  --fondo: #ffffff;
+  --superficie: #f5f5f6;
+  --texto: #000000;
+  --texto-suave: #4a4a4a;
+  --texto-tenue: #7a7a7a;
+  --borde: #e4e4e6;
+  /* El rojo de marca ES el color de error: no se inventa un segundo rojo.
+     Se distingue del CTA por la forma — los errores son texto y borde, los
+     CTA son botones rellenos. */
+  --error: #ad191a;
+
+  /* --- Espaciado: escala de 8 --- */
+  --e-xs: 4px;
+  --e-s: 8px;
+  --e-m: 16px;
+  --e-l: 24px;
+  --e-xl: 32px;
+
+  /* --- Radios --- */
+  --r-campo: 12px;
+  --r-tarjeta: 20px;
+  --r-pildora: 999px;
+
+  --sombra: 0 2px 8px rgba(35, 36, 86, 0.06);
+  --sombra-alta: 0 8px 24px rgba(35, 36, 86, 0.12);
+
+  /* Misma familia del sistema que el móvil (SF Pro / Roboto): look nativo
+     y cero peso de descarga. */
+  --fuente: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fuente);
+  color: var(--texto);
+  background: var(--fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, p { margin: 0; }
+a { color: var(--rojo); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------------------------------------------------------------------------
+   Tipografía — mismos estilos nombrados que TIPOGRAFIA en tokens.js
+   --------------------------------------------------------------------------- */
+.t-logo      { font-size: 44px; font-weight: 800; letter-spacing: -0.5px; }
+.t-titulo    { font-size: 26px; font-weight: 800; }
+.t-subtitulo { font-size: 15px; font-weight: 400; color: var(--texto-suave); }
+.t-etiqueta  { font-size: 14px; font-weight: 600; }
+.t-ayuda     { font-size: 13px; font-weight: 400; }
+
+/* ---------------------------------------------------------------------------
+   Botones
+   Regla de marca: UN SOLO CTA rojo por pantalla. El rojo es el color de la
+   identidad y pierde fuerza si se reparte; todo lo demás es negro, contorno
+   o texto.
+   --------------------------------------------------------------------------- */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-s);
+  padding: 12px var(--e-l);
+  border: none;
+  border-radius: var(--r-pildora);
+  font-family: var(--fuente);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  white-space: nowrap;
+}
+.boton:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--sombra-alta); }
+.boton:active:not(:disabled) { transform: translateY(0); }
+.boton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.boton-cta        { background: var(--rojo); color: var(--blanco); }
+.boton-cta:hover:not(:disabled) { background: var(--rojo-oscuro); }
+.boton-primario   { background: var(--negro); color: var(--blanco); }
+.boton-primario:hover:not(:disabled) { background: var(--gris-900); }
+.boton-secundario { background: var(--blanco); color: var(--texto); border: 1px solid var(--borde); }
+.boton-secundario:hover:not(:disabled) { border-color: var(--negro); }
+/* Destructivo: rojo de contorno, nunca relleno — así no compite con el CTA
+   ni invita a pulsarlo por costumbre. */
+.boton-peligro    { background: transparent; color: var(--rojo); border: 1px solid var(--rojo); }
+.boton-peligro:hover:not(:disabled) { background: var(--rojo); color: var(--blanco); }
+.boton-texto      { background: transparent; color: var(--negro); padding: var(--e-s) var(--e-m); }
+.boton-texto:hover:not(:disabled) { color: var(--rojo); }
+.boton-pequeno    { padding: 8px var(--e-m); font-size: 14px; }
+.boton-bloque     { width: 100%; }
+
+/* ---------------------------------------------------------------------------
+   Campos de formulario
+   Validación en dos momentos, igual que RegistroScreen del móvil: al perder
+   foco (borde negro + ✓, o rojo + mensaje) y al enviar.
+   --------------------------------------------------------------------------- */
+.campo { margin-bottom: var(--e-m); }
+
+.campo label {
+  display: block;
+  margin-bottom: var(--e-xs);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  width: 100%;
+  padding: 12px var(--e-m);
+  border: 1.5px solid var(--borde);
+  border-radius: var(--r-campo);
+  background: var(--superficie);
+  /* 16px evita el zoom automático de iOS al enfocar un input. */
+  font-size: 16px;
+  font-family: var(--fuente);
+  color: var(--texto);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.campo textarea { resize: vertical; min-height: 90px; }
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--negro);
+  background: var(--blanco);
+}
+
+.campo input::placeholder, .campo textarea::placeholder { color: var(--texto-tenue); }
+
+.campo.valido input,
+.campo.valido select,
+/* Campo correcto: negro sólido. Sin verde — la paleta no lo tiene, y el
+   contraste contra el gris del reposo ya comunica "esto quedó listo". */
+.campo.valido textarea { border-color: var(--negro); }
+
+.campo.invalido input,
+.campo.invalido select,
+.campo.invalido textarea { border-color: var(--error); }
+
+.campo .mensaje-error {
+  display: block;
+  margin-top: var(--e-xs);
+  font-size: 13px;
+  color: var(--error);
+}
+.campo .marca-ok {
+  float: right;
+  color: var(--negro);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fila-campos { display: flex; gap: var(--e-m); }
+.fila-campos > * { flex: 1; }
+
+/* ---------------------------------------------------------------------------
+   Tarjetas y superficies
+   --------------------------------------------------------------------------- */
+.tarjeta {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--r-tarjeta);
+  padding: var(--e-l);
+  box-shadow: var(--sombra);
+}
+
+.tarjeta-clicable { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.tarjeta-clicable:hover { transform: translateY(-2px); box-shadow: var(--sombra-alta); }
+
+/* ---------------------------------------------------------------------------
+   Chips y etiquetas de estado
+   --------------------------------------------------------------------------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-xs);
+  padding: 6px 14px;
+  border-radius: var(--r-pildora);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+.chip-activo   { background: var(--negro); border-color: var(--negro); color: var(--blanco); }
+/* Estado consolidado (publicado, activo, grupo asignado): negro relleno —
+   definitivo y legible de un vistazo. */
+.chip-exito    { background: var(--negro); border-color: var(--negro); color: var(--blanco); }
+/* Estado pendiente (borrador, sin grupo): rojo de contorno — llama la
+   atención sin gritar como lo haría relleno. */
+.chip-alerta   { background: var(--rojo-tenue); border-color: var(--rojo); color: var(--rojo); }
+.chip-neutro   { background: var(--superficie); }
+
+/* ---------------------------------------------------------------------------
+   Layout del panel privado
+   --------------------------------------------------------------------------- */
+.panel { display: flex; min-height: 100vh; }
+
+.panel-lateral {
+  width: 250px;
+  flex-shrink: 0;
+  /* Rojo oficial de marca, plano. Sin degradado: la lámina de identidad
+     define un color sólido, y degradarlo lo convierte en otro color. */
+  background: var(--rojo);
+  color: var(--blanco);
+  padding: var(--e-l) var(--e-m);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-lateral .marca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-s);
+  margin-bottom: var(--e-xl);
+  padding: 0 var(--e-s);
+}
+.panel-lateral .marca img { width: 38px; height: 38px; object-fit: contain; }
+.panel-lateral .marca span { font-size: 19px; font-weight: 800; }
+
+.panel-nav { display: flex; flex-direction: column; gap: var(--e-xs); flex: 1; }
+
+.panel-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px var(--e-m);
+  border-radius: var(--r-campo);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.panel-nav a:hover { background: rgba(255, 255, 255, 0.1); color: var(--blanco); text-decoration: none; }
+.panel-nav a.activo { background: rgba(255, 255, 255, 0.16); color: var(--blanco); }
+
+.panel-pie { border-top: 1px solid rgba(255, 255, 255, 0.16); padding-top: var(--e-m); }
+.panel-pie .nombre-comercio { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.panel-pie .email-comercio  { font-size: 12px; color: rgba(255, 255, 255, 0.65); word-break: break-all; }
+.panel-pie button {
+  margin-top: var(--e-s);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--blanco);
+  padding: 7px var(--e-m);
+  border-radius: var(--r-pildora);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+.panel-pie button:hover { background: rgba(255, 255, 255, 0.12); }
+
+.panel-contenido {
+  flex: 1;
+  padding: var(--e-xl);
+  background: var(--superficie);
+  min-width: 0; /* deja que las tablas anchas hagan scroll en vez de desbordar */
+}
+
+.encabezado-pagina {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e-m);
+  margin-bottom: var(--e-l);
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Rejillas y utilidades
+   --------------------------------------------------------------------------- */
+.rejilla { display: grid; gap: var(--e-m); }
+.rejilla-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.rejilla-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+.pila   { display: flex; flex-direction: column; gap: var(--e-m); }
+.pila-s { display: flex; flex-direction: column; gap: var(--e-s); }
+.linea  { display: flex; align-items: center; gap: var(--e-s); flex-wrap: wrap; }
+.linea-separada { display: flex; align-items: center; justify-content: space-between; gap: var(--e-m); }
+
+.suave  { color: var(--texto-suave); }
+.tenue  { color: var(--texto-tenue); }
+.centrado { text-align: center; }
+.mt-m { margin-top: var(--e-m); }
+.mt-l { margin-top: var(--e-l); }
+
+/* Métrica del resumen */
+.metrica .valor { font-size: 34px; font-weight: 800; color: var(--negro); line-height: 1.1; }
+.metrica .etiqueta { font-size: 13px; color: var(--texto-suave); margin-top: var(--e-xs); }
+
+/* Estado vacío: siempre con una acción, nunca un espacio en blanco muerto */
+.vacio {
+  text-align: center;
+  padding: var(--e-xl) var(--e-l);
+  color: var(--texto-suave);
+  border: 1.5px dashed var(--borde);
+  border-radius: var(--r-tarjeta);
+  background: var(--blanco);
+}
+.vacio .emoji { font-size: 40px; display: block; margin-bottom: var(--e-s); }
+
+/* Avisos */
+.aviso {
+  padding: 12px var(--e-m);
+  border-radius: var(--r-campo);
+  font-size: 14px;
+  margin-bottom: var(--e-m);
+}
+.aviso-error { background: var(--rojo-tenue); color: var(--rojo); border: 1px solid var(--rojo); }
+/* Confirmación en negro: el rojo ya está tomado por errores y CTA, y un
+   "guardado ✓" no necesita competir por atención. */
+.aviso-exito { background: var(--superficie); color: var(--negro); border: 1px solid var(--negro); }
+
+/* Tablas */
+.tabla { width: 100%; border-collapse: collapse; }
+.tabla th {
+  text-align: left;
+  padding: var(--e-s) var(--e-m);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--texto-tenue);
+  border-bottom: 1px solid var(--borde);
+}
+.tabla td { padding: 14px var(--e-m); border-bottom: 1px solid var(--borde); font-size: 15px; }
+.tabla tr:last-child td { border-bottom: none; }
+.tabla-desplazable { overflow-x: auto; }
+
+/* Modal */
+.fondo-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 36, 86, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--e-m);
+  z-index: 100;
+}
+.modal {
+  background: var(--blanco);
+  border-radius: var(--r-tarjeta);
+  padding: var(--e-l);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--sombra-alta);
+}
+
+/* Cargando */
+.cargando { padding: var(--e-xl); text-align: center; color: var(--texto-suave); }
+
+/* Casilla de verificación: el reset de arriba la deja del ancho del campo,
+   así que se le devuelve su tamaño natural. */
+.casilla { width: auto !important; margin: 0; accent-color: var(--rojo); }
+
+/* Formularios de una sola columna (perfil del comercio) */
+.formulario-ancho { max-width: 680px; }
+
+/* Lista de pendientes del onboarding en el resumen */
+.lista-pendientes { list-style: none; margin: 0; padding: 0; }
+.lista-pendientes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-m);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borde);
+  font-size: 15px;
+  color: var(--texto-suave);
+}
+.lista-pendientes li:last-child { border-bottom: none; }
+
+/* Platos dentro del editor de menú */
+.lista-platos { list-style: none; margin: 0; padding: 0; }
+.lista-platos li {
+  display: flex;
+  align-items: center;
+  gap: var(--e-m);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borde);
+}
+.lista-platos li:last-child { border-bottom: none; }
+/* Un plato agotado se atenúa pero sigue visible: sigue siendo parte de la
+   carta, solo que hoy no está. */
+.lista-platos li.agotado { opacity: 0.5; }
+.lista-platos li.agotado .plato-nombre { text-decoration: line-through; }
+
+.plato-datos { flex: 1; min-width: 0; }
+.plato-nombre { font-size: 15px; font-weight: 600; }
+.plato-precio { font-size: 15px; font-weight: 700; color: var(--negro); white-space: nowrap; }
+
+.formulario-plato {
+  background: var(--superficie);
+  border-radius: var(--r-campo);
+  padding: var(--e-m);
+}
+
+/* Lista de "qué incluye" de una propuesta */
+.lista-incluye { list-style: none; margin: 0; padding: 0; }
+.lista-incluye li {
+  position: relative;
+  padding-left: var(--e-l);
+  font-size: 14px;
+  color: var(--texto-suave);
+  line-height: 1.9;
+}
+.lista-incluye li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--rojo);
+  font-weight: 700;
+}
+
+/* Panel de asistentes del evento */
+.panel-asistentes {
+  border-top: 1px solid var(--borde);
+  padding-top: var(--e-m);
+}
+.asistente {
+  background: var(--superficie);
+  border-radius: var(--r-campo);
+  padding: var(--e-m);
+}
+.asistente-nombre { font-size: 16px; font-weight: 700; }
+
+/* ---------------------------------------------------------------------------
+   Responsive: el dashboard se usa sobre todo en escritorio, pero un dueño de
+   comercio revisando su agenda desde el celular es un caso real.
+   --------------------------------------------------------------------------- */
+@media (max-width: 820px) {
+  .panel { flex-direction: column; }
+  .panel-lateral { width: 100%; padding: var(--e-m); }
+  .panel-nav { flex-direction: row; overflow-x: auto; }
+  .panel-nav a { white-space: nowrap; }
+  .panel-lateral .marca { margin-bottom: var(--e-m); }
+  .panel-pie { display: flex; align-items: center; justify-content: space-between; gap: var(--e-m); }
+  .panel-pie button { width: auto; margin-top: 0; }
+  .panel-contenido { padding: var(--e-m); }
+  .fila-campos { flex-direction: column; gap: 0; }
+}

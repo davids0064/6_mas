@@ -1,0 +1,204 @@
+<div class="encabezado-pagina">
+  <div>
+    <h1 class="t-titulo">Eventos</h1>
+    <p class="t-subtitulo mt-m">Las fechas en las que puedes recibir un grupo.</p>
+  </div>
+  <button
+    type="button"
+    class="boton boton-cta"
+    (click)="nuevo()"
+    [disabled]="anfitriones().length === 0"
+  >
+    + Nuevo evento
+  </button>
+</div>
+
+@if (error()) {
+  <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+}
+
+@if (anfitriones().length === 0 && !cargando()) {
+  <div class="aviso aviso-error">
+    Antes de crear un evento necesitas definir quién recibe a los grupos.
+    <a routerLink="/panel/anfitriones">Definir anfitrión →</a>
+  </div>
+}
+
+@if (cargando()) {
+  <div class="cargando">Cargando tu agenda…</div>
+} @else if (eventos().length === 0) {
+  <div class="vacio">
+    <span class="emoji">📅</span>
+    No tienes eventos programados.
+    <p class="t-ayuda mt-m">
+      Publica una fecha y Seis Más se encarga de asignarle un grupo de seis personas.
+    </p>
+  </div>
+} @else {
+  <div class="pila">
+    @for (evento of eventos(); track evento.id) {
+      <article class="tarjeta">
+        <div class="linea-separada">
+          <div>
+            <h2 class="t-etiqueta">{{ evento.titulo }}</h2>
+            <p class="t-subtitulo mt-m">
+              {{ evento.fecha_hora | date: "EEEE d 'de' MMMM, h:mm a" }}
+            </p>
+          </div>
+          <span [class]="claseEstado(evento.estado)">{{ evento.estado }}</span>
+        </div>
+
+        @if (evento.descripcion) {
+          <p class="t-subtitulo mt-m">{{ evento.descripcion }}</p>
+        }
+
+        <div class="linea mt-m">
+          <span class="chip chip-neutro">👤 {{ evento.anfitrion_nombre ?? 'Sin anfitrión' }}</span>
+          <span class="chip chip-neutro">{{ evento.capacidad }} personas</span>
+          @if (evento.precio > 0) {
+            <span class="chip chip-neutro">${{ evento.precio.toLocaleString('es-CO') }}</span>
+          }
+          @if (evento.grupo_id) {
+            <span class="chip chip-exito">Grupo asignado</span>
+          } @else {
+            <span class="chip chip-alerta">Sin grupo aún</span>
+          }
+        </div>
+
+        <div class="linea mt-m">
+          <button
+            type="button"
+            class="boton boton-primario boton-pequeno"
+            (click)="verAsistentes(evento)"
+          >
+            {{ viendoAsistentes() === evento.id ? 'Ocultar' : 'Ver quiénes vienen' }}
+          </button>
+
+          @if (evento.estado === 'propuesto') {
+            <button
+              type="button"
+              class="boton boton-secundario boton-pequeno"
+              (click)="cambiarEstado(evento, 'confirmado')"
+            >
+              Confirmar
+            </button>
+          }
+          @if (evento.estado === 'confirmado') {
+            <button
+              type="button"
+              class="boton boton-secundario boton-pequeno"
+              (click)="cambiarEstado(evento, 'finalizado')"
+            >
+              Marcar finalizado
+            </button>
+          }
+
+          <button type="button" class="boton boton-peligro boton-pequeno" (click)="cancelar(evento)">
+            Cancelar
+          </button>
+        </div>
+
+        @if (viendoAsistentes() === evento.id) {
+          <div class="panel-asistentes mt-m">
+            @if (cargandoAsistentes()) {
+              <p class="t-subtitulo">Consultando…</p>
+            } @else if (sinGrupo()) {
+              <p class="t-subtitulo">
+                Todavía no se ha asignado un grupo a este evento. Te avisaremos cuando esté listo.
+              </p>
+            } @else {
+              <p class="t-etiqueta">Quiénes vienen</p>
+              <div class="rejilla rejilla-3 mt-m">
+                @for (asistente of asistentes(); track asistente.nombre_pila) {
+                  <div class="asistente">
+                    <div class="asistente-nombre">{{ asistente.nombre_pila }}</div>
+                    @if (asistente.intereses.length > 0) {
+                      <div class="linea mt-m">
+                        @for (interes of asistente.intereses; track interes) {
+                          <span class="chip chip-neutro">{{ interes }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+              <p class="t-ayuda tenue mt-m">
+                Por privacidad, solo compartimos el nombre y los intereses de cada persona.
+              </p>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+}
+
+@if (modalAbierto()) {
+  <div class="fondo-modal" (click)="modalAbierto.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2 class="t-etiqueta">Nuevo evento</h2>
+
+      <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate class="mt-m">
+        <div class="campo" [class.invalido]="falla('titulo')">
+          <label for="titulo">Título</label>
+          <input id="titulo" type="text" formControlName="titulo" placeholder="Noche de conversación" />
+          @if (falla('titulo')) {
+            <span class="mensaje-error">Ponle un nombre al evento.</span>
+          }
+        </div>
+
+        <div class="campo" [class.invalido]="falla('fecha_hora')">
+          <label for="fecha">Fecha y hora</label>
+          <input id="fecha" type="datetime-local" formControlName="fecha_hora" />
+          @if (falla('fecha_hora')) {
+            <span class="mensaje-error">Elige cuándo será.</span>
+          }
+        </div>
+
+        <div class="campo" [class.invalido]="falla('anfitrion_id')">
+          <label for="anfitrion">Anfitrión</label>
+          <select id="anfitrion" formControlName="anfitrion_id">
+            <option value="">Elige quién recibe…</option>
+            @for (anfitrion of anfitriones(); track anfitrion.id) {
+              <option [value]="anfitrion.id">
+                {{ anfitrion.nombre }}{{ anfitrion.titular ? ' (titular)' : '' }}
+              </option>
+            }
+          </select>
+          @if (falla('anfitrion_id')) {
+            <span class="mensaje-error">Elige quién va a recibir al grupo.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="descripcion">Descripción (opcional)</label>
+          <textarea
+            id="descripcion"
+            formControlName="descripcion"
+            placeholder="Mesa del patio, música en vivo suave, ideal para conversar."
+          ></textarea>
+        </div>
+
+        <div class="fila-campos">
+          <div class="campo">
+            <label for="capacidad">Capacidad</label>
+            <input id="capacidad" type="number" min="1" formControlName="capacidad" />
+          </div>
+          <div class="campo">
+            <label for="precio">Precio por persona</label>
+            <input id="precio" type="number" min="0" formControlName="precio" />
+          </div>
+        </div>
+
+        <div class="linea mt-m">
+          <button type="submit" class="boton boton-cta" [disabled]="guardando()">
+            {{ guardando() ? 'Creando…' : 'Crear evento' }}
+          </button>
+          <button type="button" class="boton boton-secundario" (click)="modalAbierto.set(false)">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

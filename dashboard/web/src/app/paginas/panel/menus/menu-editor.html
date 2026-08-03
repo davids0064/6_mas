@@ -1,0 +1,192 @@
+@if (cargando()) {
+  <div class="cargando">Cargando el menú…</div>
+} @else if (menu(); as m) {
+  <a routerLink="/panel/menus" class="boton boton-texto boton-pequeno">← Volver a menús</a>
+
+  <div class="encabezado-pagina mt-m">
+    <div>
+      <h1 class="t-titulo">{{ m.nombre }}</h1>
+      <p class="t-subtitulo mt-m">
+        {{ m.secciones.length }} {{ m.secciones.length === 1 ? 'sección' : 'secciones' }} ·
+        {{ totalPlatos() }} {{ totalPlatos() === 1 ? 'plato' : 'platos' }}
+      </p>
+    </div>
+
+    <div class="linea">
+      @if (m.estado === 'publicado') {
+        <span class="chip chip-exito">Publicado</span>
+        <button type="button" class="boton boton-secundario boton-pequeno" (click)="cambiarEstado('borrador')">
+          Despublicar
+        </button>
+      } @else {
+        <span class="chip chip-alerta">{{ m.estado }}</span>
+        <button type="button" class="boton boton-cta boton-pequeno" (click)="cambiarEstado('publicado')">
+          Publicar menú
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+  }
+
+  @if (m.secciones.length === 0) {
+    <div class="vacio">
+      <span class="emoji">🍽️</span>
+      Este menú aún no tiene secciones. Empieza por una — "Entradas", "Fuertes", "Postres".
+    </div>
+  }
+
+  <div class="pila mt-l">
+    @for (seccion of m.secciones; track seccion.id) {
+      <section class="tarjeta">
+        <div class="linea-separada">
+          <h2 class="t-etiqueta">{{ seccion.nombre }}</h2>
+          <button type="button" class="boton boton-texto boton-pequeno" (click)="eliminarSeccion(seccion)">
+            Eliminar sección
+          </button>
+        </div>
+
+        @if (seccion.items.length === 0) {
+          <p class="t-subtitulo mt-m">Sin platos todavía.</p>
+        } @else {
+          <ul class="lista-platos mt-m">
+            @for (item of seccion.items; track item.id) {
+              <li [class.agotado]="!item.disponible">
+                <div class="plato-datos">
+                  <div class="plato-nombre">{{ item.nombre }}</div>
+                  @if (item.descripcion) {
+                    <div class="t-ayuda suave">{{ item.descripcion }}</div>
+                  }
+                </div>
+
+                <div class="plato-precio">${{ item.precio.toLocaleString('es-CO') }}</div>
+
+                <div class="linea">
+                  <button
+                    type="button"
+                    class="boton boton-secundario boton-pequeno"
+                    (click)="alternarDisponible(seccion.id, item)"
+                  >
+                    {{ item.disponible ? 'Marcar agotado' : 'Volver a ofrecer' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="boton boton-texto boton-pequeno"
+                    (click)="eliminarItem(seccion.id, item)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+
+        @if (seccionEnEdicion() === seccion.id) {
+          <div class="formulario-plato mt-m">
+            <div class="fila-campos">
+              <div class="campo">
+                <label [for]="'plato-' + seccion.id">Plato</label>
+                <input
+                  [id]="'plato-' + seccion.id"
+                  type="text"
+                  [(ngModel)]="borrador.nombre"
+                  placeholder="Tabla de quesos"
+                  (keyup.enter)="agregarItem(seccion.id)"
+                />
+              </div>
+              <div class="campo">
+                <label [for]="'precio-' + seccion.id">Precio</label>
+                <input
+                  [id]="'precio-' + seccion.id"
+                  type="number"
+                  min="0"
+                  [(ngModel)]="borrador.precio"
+                  placeholder="38000"
+                  (keyup.enter)="agregarItem(seccion.id)"
+                />
+              </div>
+            </div>
+
+            <div class="campo">
+              <label [for]="'desc-' + seccion.id">Descripción (opcional)</label>
+              <input
+                [id]="'desc-' + seccion.id"
+                type="text"
+                [(ngModel)]="borrador.descripcion"
+                placeholder="Para compartir entre cuatro"
+                (keyup.enter)="agregarItem(seccion.id)"
+              />
+            </div>
+
+            <div class="linea">
+              <button
+                type="button"
+                class="boton boton-primario boton-pequeno"
+                (click)="agregarItem(seccion.id)"
+                [disabled]="!borrador.nombre.trim()"
+              >
+                Agregar plato
+              </button>
+              <button
+                type="button"
+                class="boton boton-texto boton-pequeno"
+                (click)="seccionEnEdicion.set(null)"
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+        } @else {
+          <button
+            type="button"
+            class="boton boton-secundario boton-pequeno mt-m"
+            (click)="abrirFormularioItem(seccion.id)"
+          >
+            + Agregar plato
+          </button>
+        }
+      </section>
+    }
+  </div>
+
+  <div class="mt-l">
+    @if (nuevaSeccionAbierta()) {
+      <div class="tarjeta">
+        <div class="campo">
+          <label for="nueva-seccion">Nombre de la sección</label>
+          <input
+            id="nueva-seccion"
+            type="text"
+            [(ngModel)]="nombreSeccion"
+            placeholder="Entradas"
+            (keyup.enter)="agregarSeccion()"
+          />
+        </div>
+        <div class="linea">
+          <button
+            type="button"
+            class="boton boton-primario boton-pequeno"
+            (click)="agregarSeccion()"
+            [disabled]="!nombreSeccion.trim()"
+          >
+            Agregar sección
+          </button>
+          <button
+            type="button"
+            class="boton boton-texto boton-pequeno"
+            (click)="nuevaSeccionAbierta.set(false)"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    } @else {
+      <button type="button" class="boton boton-secundario" (click)="nuevaSeccionAbierta.set(true)">
+        + Nueva sección
+      </button>
+    }
+  </div>
+}

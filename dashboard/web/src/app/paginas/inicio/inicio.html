@@ -1,0 +1,71 @@
+<header class="barra">
+  <div class="contenedor barra-interna">
+    <a routerLink="/" class="marca-barra">
+      <img src="logo_blanco.png" alt="" aria-hidden="true" />
+      <span>Seis Más</span>
+    </a>
+    <nav class="linea">
+      <a routerLink="/entrar" class="boton boton-texto enlace-claro">Iniciar sesión</a>
+      <a routerLink="/registro" class="boton boton-cta boton-pequeno">Registra tu comercio</a>
+    </nav>
+  </div>
+</header>
+
+<section class="portada">
+  <div class="contenedor portada-interna">
+    <span class="etiqueta-portada">Para comercios</span>
+    <h1 class="t-logo titulo-portada">Seis personas nuevas,<br />una mesa tuya.</h1>
+    <p class="subtitulo-portada">
+      Seis Más forma grupos de seis personas que comparten intereses y los conecta con lugares como el
+      tuyo. Tú pones el espacio y la bienvenida; nosotros, la compañía.
+    </p>
+    <div class="linea acciones-portada">
+      <a routerLink="/registro" class="boton boton-cta">Registra tu comercio</a>
+      <a routerLink="/entrar" class="boton boton-texto enlace-claro">Ya tengo cuenta →</a>
+    </div>
+  </div>
+</section>
+
+<section class="contenedor bloque">
+  <h2 class="t-titulo centrado">Cómo funciona</h2>
+  <p class="t-subtitulo centrado mt-m">Cuatro pasos, y el primero toma menos de dos minutos.</p>
+
+  <div class="rejilla rejilla-2 mt-l">
+    @for (paso of pasos; track paso.titulo) {
+      <article class="tarjeta">
+        <span class="emoji-paso">{{ paso.emoji }}</span>
+        <h3 class="t-etiqueta titulo-tarjeta">{{ paso.titulo }}</h3>
+        <p class="t-subtitulo">{{ paso.texto }}</p>
+      </article>
+    }
+  </div>
+</section>
+
+<section class="bloque bloque-claro">
+  <div class="contenedor">
+    <h2 class="t-titulo centrado">Por qué te conviene</h2>
+
+    <div class="rejilla rejilla-3 mt-l">
+      @for (beneficio of beneficios; track beneficio.titulo) {
+        <article class="tarjeta">
+          <span class="emoji-paso">{{ beneficio.emoji }}</span>
+          <h3 class="t-etiqueta titulo-tarjeta">{{ beneficio.titulo }}</h3>
+          <p class="t-subtitulo">{{ beneficio.texto }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="contenedor bloque centrado">
+  <h2 class="t-titulo">¿Listo para recibir tu primer grupo?</h2>
+  <p class="t-subtitulo mt-m">Registrarte es gratis y no te compromete a nada.</p>
+  <a routerLink="/registro" class="boton boton-cta mt-l">Empezar ahora</a>
+</section>
+
+<footer class="pie">
+  <div class="contenedor linea-separada">
+    <span class="t-ayuda">Seis Más — Conectando Personas</span>
+    <a routerLink="/entrar" class="t-ayuda">Acceso para comercios</a>
+  </div>
+</footer>

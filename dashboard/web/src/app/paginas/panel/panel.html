@@ -1,0 +1,33 @@
+<div class="panel">
+  <aside class="panel-lateral">
+    <div class="marca">
+      <img src="logo_blanco.png" alt="" aria-hidden="true" />
+      <span>Seis Más</span>
+    </div>
+
+    <nav class="panel-nav">
+      @for (seccion of secciones; track seccion.ruta) {
+        <a
+          [routerLink]="seccion.ruta"
+          routerLinkActive="activo"
+          [routerLinkActiveOptions]="{ exact: seccion.exacta }"
+        >
+          <span aria-hidden="true">{{ seccion.emoji }}</span>
+          {{ seccion.etiqueta }}
+        </a>
+      }
+    </nav>
+
+    <div class="panel-pie">
+      <div>
+        <div class="nombre-comercio">{{ comercio()?.nombre }}</div>
+        <div class="email-comercio">{{ comercio()?.email }}</div>
+      </div>
+      <button type="button" (click)="salir()">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="panel-contenido">
+    <router-outlet />
+  </main>
+</div>

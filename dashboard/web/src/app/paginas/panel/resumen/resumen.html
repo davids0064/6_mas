@@ -1,0 +1,99 @@
+@if (cargando()) {
+  <div class="cargando">Cargando tu panel…</div>
+} @else if (error()) {
+  <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+} @else if (datos(); as r) {
+  <div class="encabezado-pagina">
+    <div>
+      <h1 class="t-titulo">Hola, {{ r.comercio.nombre }} 👋</h1>
+      <p class="t-subtitulo mt-m">Este es el estado de tu comercio en Seis Más.</p>
+    </div>
+  </div>
+
+  <!-- Lo que falta va primero: es lo accionable. Los números están abajo
+       porque informan, pero no piden nada. -->
+  @if (r.pendientes.length > 0) {
+    <section class="tarjeta">
+      <h2 class="t-etiqueta">Para estar listo te falta</h2>
+      <ul class="lista-pendientes mt-m">
+        @for (pendiente of r.pendientes; track pendiente.clave) {
+          <li>
+            <span>{{ pendiente.texto }}</span>
+            <a [routerLink]="ruta(pendiente.clave)" class="boton boton-secundario boton-pequeno">
+              Completar
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  } @else {
+    <div class="aviso aviso-exito">
+      ✓ Tu comercio está completo y listo para recibir grupos.
+    </div>
+  }
+
+  <div class="rejilla rejilla-3 mt-l">
+    <article class="tarjeta metrica">
+      <div class="valor">{{ r.contadores.eventos_proximos }}</div>
+      <div class="etiqueta">Eventos próximos</div>
+    </article>
+    <article class="tarjeta metrica">
+      <div class="valor">{{ r.contadores.menus_publicados }}</div>
+      <div class="etiqueta">Menús publicados</div>
+    </article>
+    <article class="tarjeta metrica">
+      <div class="valor">{{ r.contadores.propuestas_activas }}</div>
+      <div class="etiqueta">Propuestas activas</div>
+    </article>
+    <article class="tarjeta metrica">
+      <div class="valor">{{ r.contadores.anfitriones_total }}</div>
+      <div class="etiqueta">Anfitriones</div>
+    </article>
+  </div>
+
+  <section class="mt-l">
+    <div class="linea-separada">
+      <h2 class="t-etiqueta">Próximos eventos</h2>
+      <a routerLink="/panel/eventos" class="boton boton-texto boton-pequeno">Ver todos →</a>
+    </div>
+
+    @if (r.proximos_eventos.length === 0) {
+      <div class="vacio mt-m">
+        <span class="emoji">📅</span>
+        Todavía no tienes eventos programados.
+        <div class="mt-m">
+          <a routerLink="/panel/eventos" class="boton boton-primario boton-pequeno">Crear un evento</a>
+        </div>
+      </div>
+    } @else {
+      <div class="tarjeta mt-m tabla-desplazable">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Evento</th>
+              <th>Cuándo</th>
+              <th>Anfitrión</th>
+              <th>Grupo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (evento of r.proximos_eventos; track evento.id) {
+              <tr>
+                <td>{{ evento.titulo }}</td>
+                <td>{{ evento.fecha_hora | date: "d 'de' MMMM, h:mm a" }}</td>
+                <td>{{ evento.anfitrion_nombre ?? '—' }}</td>
+                <td>
+                  @if (evento.tiene_grupo) {
+                    <span class="chip chip-exito">Asignado</span>
+                  } @else {
+                    <span class="chip chip-alerta">Sin grupo aún</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}
