@@ -36,6 +36,9 @@ export const api = {
 
   // Intereses
   obtenerIntereses: () => solicitud('/api/intereses'),
+
+  // Géneros
+  obtenerGeneros: () => solicitud('/api/generos'),
   guardarInteresesUsuario: (usuarioId, interesIds) =>
     solicitud(`/api/usuarios/${usuarioId}/intereses`, {
       method: 'PUT',
