@@ -4,9 +4,9 @@
 // fondo índigo del cielo). Pide usuario (correo) y contraseña, y ofrece
 // dos salidas secundarias: recuperar contraseña y registrarse.
 //
-// Conecta con POST /api/usuarios/login. "Recuperar contraseña" muestra una
-// confirmación local (el endpoint de recuperación aún no existe en el
-// backend; queda documentado como pendiente).
+// Conecta con POST /api/usuarios/login. "¿Olvidaste tu contraseña?" avisa que
+// el restablecimiento todavía no existe: el endpoint no está en el backend y
+// simular que se envió un correo es peor que decirlo.
 import React, { useState } from 'react';
 import {
   View,
@@ -57,16 +57,22 @@ export default function LoginScreen({ onLogin, onIrARegistro }) {
     }
   };
 
+  // El backend todavía no tiene endpoint de recuperación (hace falta SMTP,
+  // tokens de un solo uso y expiración: es su propia tarea). Hasta que exista,
+  // esto dice la verdad en vez de simular que mandó un correo.
+  //
+  // Antes respondía "te enviaremos instrucciones 📬" sin enviar nada, que es
+  // peor que no ofrecer la opción: quien se queda fuera de su cuenta espera un
+  // mail que no va a llegar y no busca otra salida.
   const recuperar = () => {
     setErrorGeneral(null);
-    if (!REGEX_EMAIL.test(email)) {
-      setErrores({ email: 'Escribe tu correo para enviarte las instrucciones' });
-      setAvisoRecuperacion(null);
-      return;
-    }
     setErrores({});
-    // Pendiente de backend: endpoint de recuperación de contraseña.
-    setAvisoRecuperacion(`Si ${email.trim()} está registrado, te enviaremos instrucciones 📬`);
+    // Sin canal de soporte todavía: el repo no define ninguna dirección real y
+    // poner una inventada mandaría a la gente a un buzón muerto. Cuando exista,
+    // va acá.
+    setAvisoRecuperacion(
+      'Todavía no podemos restablecer contraseñas desde la app. Estamos trabajando en eso.',
+    );
   };
 
   return (

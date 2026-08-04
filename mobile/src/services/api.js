@@ -31,7 +31,13 @@ async function solicitud(path, { method = 'GET', body, headers } = {}) {
     // que la app no siga reintentando con una credencial muerta.
     if (respuesta.status === 401) sesion.limpiar();
     const mensaje = (data && data.error) || `Error HTTP ${respuesta.status}`;
-    throw new Error(mensaje);
+    const error = new Error(mensaje);
+    // El código viaja con el error porque hay respuestas que no son fallos que
+    // convenga reintentar sino estados que la pantalla debe tratar distinto:
+    // un 409 al valorar significa "ya lo valoraste", y mostrarlo como error
+    // rojo invitaría a reintentar algo que nunca va a pasar.
+    error.estado = respuesta.status;
+    throw error;
   }
   return data;
 }

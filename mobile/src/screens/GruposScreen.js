@@ -138,6 +138,27 @@ function proximoPlan(eventos) {
   );
 }
 
+// El plan más reciente que ya pasó y que esta persona todavía no valoró.
+//
+// El más reciente y no el más viejo: se pregunta por lo que se tiene fresco.
+// Un cancelado no se valora — no hubo nada que juzgar. `ya_valorado` lo
+// resuelve el backend por usuario, no por evento: que un compañero de grupo
+// haya opinado no significa que esta persona ya lo hizo.
+function planPorValorar(eventos) {
+  if (!Array.isArray(eventos)) return null;
+  const ahora = Date.now();
+  return (
+    [...eventos]
+      .reverse()
+      .find(
+        (e) =>
+          e.estado !== 'cancelado' &&
+          !e.ya_valorado &&
+          new Date(e.fecha_hora).getTime() < ahora,
+      ) || null
+  );
+}
+
 // Tarjeta del plan asignado: cuándo, qué, dónde y quién recibe.
 //
 // La fecha va primero y en grande porque es lo que la persona viene a mirar;
@@ -174,10 +195,11 @@ function TarjetaPlan({ evento }) {
   );
 }
 
-export default function GruposScreen() {
+export default function GruposScreen({ onValorar }) {
   const [grupo, setGrupo] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [evento, setEvento] = useState(null);
+  const [porValorar, setPorValorar] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   // Ya no recibe ids por params. Antes esperaba un `grupoId` que App.js nunca
@@ -198,6 +220,7 @@ export default function GruposScreen() {
       setGrupo(miGrupo);
       setUsuario(miPerfil);
       setEvento(proximoPlan(misEventos));
+      setPorValorar(planPorValorar(misEventos));
     } catch {
       // Sin datos no se bloquea la pantalla: se muestra el estado de espera.
     } finally {
@@ -223,6 +246,25 @@ export default function GruposScreen() {
           <Animated.View entering={FadeInDown.duration(400)}>
             <AnilloGrupo miembros={miembros} />
           </Animated.View>
+
+          {/* Va fuera del bloque de `grupo` porque no depende de él: quien ya
+              fue a un plan puede estar sin grupo nuevo todavía, y esa es
+              justamente la ventana en la que se le puede preguntar sin
+              interrumpirle nada. */}
+          {porValorar && onValorar ? (
+            <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.avisoValorar}>
+              <Text style={styles.avisoValorarTexto}>
+                ¿Cómo estuvo {porValorar.titulo}?
+              </Text>
+              <TouchableOpacity
+                style={styles.botonValorar}
+                onPress={() => onValorar(porValorar)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.botonValorarTexto}>Valorar ★</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          ) : null}
 
           {grupo ? (
             <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.bloqueTexto}>
@@ -339,6 +381,33 @@ const styles = StyleSheet.create({
     color: COLORES.textoSuave,
     marginTop: ESPACIADO.xl,
   },
+
+  // Aviso de valoración pendiente. Contorno y no relleno: es una invitación,
+  // no la acción principal de la pantalla, y compite con la tarjeta del plan
+  // que viene — que sí es a lo que la persona entró.
+  avisoValorar: {
+    alignSelf: 'stretch',
+    marginTop: ESPACIADO.l,
+    marginHorizontal: ESPACIADO.m,
+    padding: ESPACIADO.m,
+    borderRadius: RADIOS.tarjeta,
+    borderWidth: 1.5,
+    borderColor: COLORES.borde,
+    alignItems: 'center',
+  },
+  avisoValorarTexto: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.texto,
+    textAlign: 'center',
+  },
+  botonValorar: {
+    marginTop: ESPACIADO.m,
+    backgroundColor: COLORES.rojoMarca,
+    borderRadius: RADIOS.boton,
+    paddingHorizontal: 28,
+    paddingVertical: 10,
+  },
+  botonValorarTexto: { ...TIPOGRAFIA.boton, fontSize: 15, color: COLORES.blanco },
 
   // Tarjeta del plan. Es la única superficie elevada de la pantalla: el anillo
   // es la metáfora, pero el plan es la información accionable, y tiene que

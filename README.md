@@ -17,29 +17,47 @@ contrato de la API ya no cambia cuando ocurra.
     DISEÑO.md      # justificación técnica del modelo de datos + diagrama ER (Mermaid)
     schema.sql     # script SQL completo (PostgreSQL)
     migrations/    # cambios aditivos posteriores al schema inicial
-  backend/         # API REST Node.js + Express + PostgreSQL
+  backend/         # API REST Node.js + Express + PostgreSQL (lado social)
   mobile/          # capa JS de la app React Native (CLI, sin Expo)
+  dashboard/       # panel de comercios: API PHP + SPA Angular (lado comercial)
+    api/           # PHP sin framework, rol seis_dashboard
+    web/           # Angular standalone, desplegable en Hostinger
   roadmap.png      # referencia de producto (no técnico)
 ```
+
+Los dos backends son deliberados, no un accidente de historia: son **dos
+contextos con dos roles de base de datos distintos**. El social nunca lee los
+datos del comercio y el comercial nunca lee los personales, y eso está impuesto
+por GRANTs de PostgreSQL, no por disciplina en el código (ver "Autenticación").
 
 ## Arquitectura general
 
 ```mermaid
 flowchart LR
-    subgraph Cliente
+    subgraph Usuarios
         A[App React Native\niOS via Xcode]
     end
+    subgraph Comercios
+        D[SPA Angular\ndashboard/web]
+    end
     subgraph Servidor
-        B[Backend Express\n/api/*]
+        B[Backend Express\n/api/* — rol seis_app]
+        E[API PHP\ndashboard/api — rol seis_dashboard]
         C[(PostgreSQL)]
     end
     A -- "fetch JSON sobre HTTP" --> B
+    D -- "fetch JSON sobre HTTP" --> E
     B -- "pg (SQL)" --> C
+    E -- "PDO (SQL)" --> C
 ```
 
 - La app móvil habla con el backend por HTTP/JSON (`mobile/src/services/api.js`).
 - El backend expone rutas REST por entidad y usa `pg` directo contra
   PostgreSQL (sin ORM, ver justificación en `backend/src/config/db.js`).
+- El dashboard de comercios habla con su propia API PHP (`dashboard/api`), que
+  usa PDO contra la misma base con **otro rol**. Las dos APIs se cruzan solo a
+  través de vistas (`v_comercio_publico`, `v_oferta_comercio`): ninguna lee las
+  tablas de la otra.
 - El esquema de base de datos (`db/schema.sql`) es la fuente de verdad de las
   reglas de integridad (tamaño de grupo, rating 1-5, unicidad de email, etc.),
   no solo la capa de aplicación.
