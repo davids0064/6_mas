@@ -1,15 +1,19 @@
-// Pantalla "Tu grupo". Dos estados:
+// Pantalla "Tu grupo". Tres estados, que son los tres del matching:
 //
-//   1. Esperando emparejamiento (sin grupo): un anillo de 6 puestos — el
-//      usuario ya ocupa uno (círculo rojo de marca con su inicial) y los
-//      otros 5 pulsan vacíos esperando el matching. Refuerza la metáfora
-//      del "6" de la marca. Microcopy motivador + botón Actualizar.
-//   2. Grupo asignado: el mismo anillo con los puestos llenos (inicial de
-//      cada miembro) y la lista de nombres debajo.
+//   1. Esperando grupo: un anillo de 6 puestos — el usuario ya ocupa uno
+//      (círculo rojo de marca con su inicial) y los otros 5 pulsan vacíos.
+//      Refuerza la metáfora del "6" de la marca. Microcopy motivador +
+//      botón Actualizar.
+//   2. Grupo formado pero todavía sin plan: el anillo lleno y un aviso de
+//      que se está buscando el plan. No es un caso raro ni un error — el
+//      matching deja el grupo `completo` sin plan a propósito cuando ningún
+//      comercio de la ciudad tiene oferta afín, en vez de asignar uno malo
+//      (ver README, etapa 2). Sin este estado ese grupo vería un hueco.
+//   3. Grupo con plan: el anillo lleno más la tarjeta del plan — cuándo,
+//      qué, dónde y quién recibe.
 //
-// La asignación real de miembros por afinidad (matching) es responsabilidad
-// del backend/algoritmo futuro; esta pantalla consume GET /api/grupos/:id y
-// GET /api/usuarios/:id (para la inicial y el saludo del estado de espera).
+// Consume GET /api/usuarios/yo/grupo, /yo/perfil y /yo/eventos: las tres
+// resuelven "yo" desde el token, sin ids por parámetro.
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Animated, {
@@ -94,9 +98,86 @@ function AnilloGrupo({ miembros }) {
   );
 }
 
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+// Fecha en formato humano ("jueves 14 de agosto, 7:00 p. m.").
+//
+// A mano y no con toLocaleDateString('es-*'): Hermes se compila sin datos de
+// ICU salvo que se active explícitamente, así que los locales caen a inglés
+// según el dispositivo. Doce nombres y un condicional son más baratos que un
+// build especial, y garantizan que la fecha del plan se lea igual en todos.
+function formatearFecha(iso) {
+  const f = new Date(iso);
+  const hora12 = f.getHours() % 12 || 12;
+  const minutos = String(f.getMinutes()).padStart(2, '0');
+  const meridiano = f.getHours() < 12 ? 'a. m.' : 'p. m.';
+  return `${DIAS[f.getDay()]} ${f.getDate()} de ${MESES[f.getMonth()]}, ${hora12}:${minutos} ${meridiano}`;
+}
+
+// Separador de miles a mano, por lo mismo que la fecha: sin ICU,
+// toLocaleString no agrupa según el locale y "120000" se lee mal de un vistazo.
+function formatearPrecio(valor) {
+  return String(Math.round(Number(valor))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// El plan que viene: el primero que todavía no pasó y no está cancelado.
+//
+// El endpoint devuelve todos los eventos del usuario ordenados por fecha,
+// incluidos los de grupos anteriores; mostrar el primero de la lista sería
+// mostrarle un plan del mes pasado a alguien que tiene uno la semana que viene.
+function proximoPlan(eventos) {
+  if (!Array.isArray(eventos)) return null;
+  const ahora = Date.now();
+  return (
+    eventos.find((e) => e.estado !== 'cancelado' && new Date(e.fecha_hora).getTime() >= ahora) ||
+    null
+  );
+}
+
+// Tarjeta del plan asignado: cuándo, qué, dónde y quién recibe.
+//
+// La fecha va primero y en grande porque es lo que la persona viene a mirar;
+// el resto es contexto. La dirección solo aparece si el backend la resolvió
+// (el JOIN es LEFT: un comercio dado de baja deja el evento sin dónde, y es
+// preferible una tarjeta incompleta a no mostrar el plan).
+function TarjetaPlan({ evento }) {
+  return (
+    <View style={styles.tarjetaPlan}>
+      <Text style={styles.planEtiqueta}>TU PLAN</Text>
+      <Text style={styles.planFecha}>{formatearFecha(evento.fecha_hora)}</Text>
+      <Text style={styles.planTitulo}>{evento.titulo}</Text>
+
+      {evento.comercio_nombre ? (
+        <View style={styles.planBloque}>
+          <Text style={styles.planDato}>📍 {evento.comercio_nombre}</Text>
+          {evento.comercio_direccion ? (
+            <Text style={styles.planDatoSuave}>
+              {evento.comercio_direccion}
+              {evento.comercio_ciudad ? `, ${evento.comercio_ciudad}` : ''}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {evento.anfitrion_nombre ? (
+        <Text style={styles.planDato}>🤝 Te recibe {evento.anfitrion_nombre.split(' ')[0]}</Text>
+      ) : null}
+
+      {Number(evento.precio) > 0 ? (
+        <Text style={styles.planDato}>💵 ${formatearPrecio(evento.precio)} por persona</Text>
+      ) : null}
+    </View>
+  );
+}
+
 export default function GruposScreen() {
   const [grupo, setGrupo] = useState(null);
   const [usuario, setUsuario] = useState(null);
+  const [evento, setEvento] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   // Ya no recibe ids por params. Antes esperaba un `grupoId` que App.js nunca
@@ -105,16 +186,18 @@ export default function GruposScreen() {
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      // En paralelo: son dos consultas independientes y la pantalla necesita
-      // ambas para pintarse.
-      const [miGrupo, miPerfil] = await Promise.all([
+      // En paralelo: son consultas independientes y la pantalla necesita las
+      // tres para pintarse.
+      const [miGrupo, miPerfil, misEventos] = await Promise.all([
         api.obtenerMiGrupo(),
         api.obtenerMiPerfil(),
+        api.obtenerMisEventos(),
       ]);
       // obtenerMiGrupo devuelve null (204) mientras el matching todavía no
       // completó los 6: es el estado de espera, no un error.
       setGrupo(miGrupo);
       setUsuario(miPerfil);
+      setEvento(proximoPlan(misEventos));
     } catch {
       // Sin datos no se bloquea la pantalla: se muestra el estado de espera.
     } finally {
@@ -143,13 +226,36 @@ export default function GruposScreen() {
 
           {grupo ? (
             <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.bloqueTexto}>
-              <Text style={styles.titulo}>¡Tu grupo está en marcha! 🎉</Text>
-              <Text style={styles.subtitulo}>Estado: {grupo.estado}</Text>
+              {evento ? (
+                <>
+                  <Text style={styles.titulo}>¡Ya tienes plan! 🎉</Text>
+                  <TarjetaPlan evento={evento} />
+                </>
+              ) : (
+                <>
+                  {/* Grupo completo sin plan: el matching prefiere dejarlo en
+                      espera antes que mandarlo a algo que no le interesa, y lo
+                      resuelve solo en cuanto un comercio de la ciudad publique
+                      oferta afín. Se dice tal cual para que la espera no se
+                      lea como que algo se rompió. */}
+                  <Text style={styles.titulo}>¡Tu grupo está completo! 🎉</Text>
+                  <Text style={styles.subtitulo}>
+                    Estamos buscándoles el plan indicado. Te avisamos apenas esté: preferimos
+                    esperar a mandarlos a algo que no les guste.
+                  </Text>
+                </>
+              )}
+
+              <Text style={styles.tituloMiembros}>Tu grupo</Text>
               {grupo.miembros?.map((m) => (
                 <Text key={m.id} style={styles.miembro}>
                   {m.nombre}
                 </Text>
               ))}
+
+              <TouchableOpacity style={styles.botonActualizar} onPress={cargar} activeOpacity={0.8}>
+                <Text style={styles.botonActualizarTexto}>Actualizar ↻</Text>
+              </TouchableOpacity>
             </Animated.View>
           ) : (
             <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.bloqueTexto}>
@@ -227,6 +333,52 @@ const styles = StyleSheet.create({
     ...TIPOGRAFIA.input,
     color: COLORES.texto,
     marginTop: ESPACIADO.s,
+  },
+  tituloMiembros: {
+    ...TIPOGRAFIA.etiqueta,
+    color: COLORES.textoSuave,
+    marginTop: ESPACIADO.xl,
+  },
+
+  // Tarjeta del plan. Es la única superficie elevada de la pantalla: el anillo
+  // es la metáfora, pero el plan es la información accionable, y tiene que
+  // ganarle visualmente a la lista de nombres que va debajo.
+  tarjetaPlan: {
+    alignSelf: 'stretch',
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.tarjeta,
+    padding: ESPACIADO.l,
+    marginTop: ESPACIADO.l,
+  },
+  planEtiqueta: {
+    ...TIPOGRAFIA.ayuda,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: COLORES.rojoMarca,
+  },
+  planFecha: {
+    ...TIPOGRAFIA.titulo,
+    fontSize: 20,
+    color: COLORES.texto,
+    marginTop: ESPACIADO.s,
+  },
+  planTitulo: {
+    ...TIPOGRAFIA.input,
+    fontWeight: '600',
+    color: COLORES.texto,
+    marginTop: ESPACIADO.xs,
+  },
+  planBloque: { marginTop: ESPACIADO.m },
+  planDato: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.texto,
+    marginTop: ESPACIADO.s,
+  },
+  planDatoSuave: {
+    ...TIPOGRAFIA.ayuda,
+    color: COLORES.textoSuave,
+    marginTop: ESPACIADO.xs,
+    marginLeft: 22, // alinea con el texto del 📍, no con el emoji
   },
   botonActualizar: {
     marginTop: ESPACIADO.xl,

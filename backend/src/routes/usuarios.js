@@ -175,12 +175,38 @@ router.get('/yo/grupo', async (req, res, next) => {
 // La app pedía antes /api/eventos?grupo_id=X, que dejaba leer la agenda de
 // cualquier grupo con solo cambiar el id. Acá el filtro no es un parámetro:
 // sale de a qué grupos pertenece quien pregunta.
+//
+// Devuelve el evento con el comercio resuelto porque "tu plan" sin el dónde no
+// es un plan: la fila de `eventos` trae qué y cuándo, pero la dirección vive en
+// `comercios`, y este rol (seis_app) no la puede leer — la ve por
+// `v_comercio_publico`, que es exactamente la frontera que la migración 001
+// dejó escrita.
+//
+// Los JOIN son LEFT a propósito. `v_comercio_publico` filtra por `activo`: si
+// un comercio se da de baja después de que el matching asignó el plan, un JOIN
+// normal haría DESAPARECER el evento de la app del usuario. Degradado (sin
+// dirección) es mucho mejor que invisible — la fila de `eventos` guarda el
+// título, la fecha y el precio del momento de la asignación, así que el plan se
+// sigue pudiendo mostrar.
 router.get('/yo/eventos', async (req, res, next) => {
   try {
     const { rows } = await db.query(
-      `SELECT e.*
+      `SELECT e.*,
+              c.nombre    AS comercio_nombre,
+              c.direccion AS comercio_direccion,
+              c.ciudad    AS comercio_ciudad,
+              c.logo_url  AS comercio_logo_url,
+              a.nombre    AS anfitrion_nombre,
+              (f.id IS NOT NULL) AS ya_valorado
          FROM eventos e
          JOIN grupo_miembros gm ON gm.grupo_id = e.grupo_id
+         LEFT JOIN v_comercio_publico c ON c.id = e.comercio_id
+         LEFT JOIN anfitriones a        ON a.id = e.anfitrion_id
+                                       AND a.deleted_at IS NULL
+         -- Atado al usuario que pregunta, no al evento: 'ya_valorado' responde
+         -- "¿lo valoré YO?", y con la valoración de otro miembro del grupo se
+         -- le escondería el formulario a quien todavía no opinó.
+         LEFT JOIN feedback f ON f.evento_id = e.id AND f.usuario_id = $1
         WHERE gm.usuario_id = $1
           AND e.deleted_at IS NULL
         ORDER BY e.fecha_hora`,
