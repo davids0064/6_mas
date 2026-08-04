@@ -86,6 +86,51 @@ export interface Propuesta {
   updated_at: string;
 }
 
+/** Categoría del catálogo paramétrico (pa_intereses). */
+export interface Interes {
+  id: string;
+  nombre: string;
+  icono: string;
+}
+
+/**
+ * Un plan: la experiencia concreta que se le puede asignar a un grupo, atada a
+ * un interés del catálogo.
+ *
+ * El `interes_id` no es decorativo: el matching exige que al menos la mitad del
+ * grupo comparta ese interés antes de mirar el tier del comercio.
+ */
+export interface Plan {
+  id: string;
+  interes_id: string;
+  interes_nombre: string;
+  interes_icono: string;
+  titulo: string;
+  descripcion: string | null;
+  duracion_min: number;
+  precio: number;
+  capacidad: number;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Una franja recurrente de disponibilidad. `dia_semana` sigue la convención de
+ * EXTRACT(DOW) de Postgres: 0 = domingo.
+ */
+export interface Franja {
+  id: string;
+  dia_semana: number;
+  dia_nombre: string;
+  hora_inicio: string;
+  hora_fin: string;
+  grupos_max: number;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Anfitrion {
   id: string;
   nombre: string;
@@ -136,6 +181,8 @@ export interface Resumen {
     propuestas_activas: number;
     anfitriones_total: number;
     eventos_proximos: number;
+    planes_activos: number;
+    franjas_activas: number;
   };
   proximos_eventos: Array<{
     id: string;

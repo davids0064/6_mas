@@ -10,9 +10,12 @@ declare(strict_types=1);
 
 use SeisMas\Controllers\AnfitrionController;
 use SeisMas\Controllers\AuthController;
+use SeisMas\Controllers\CatalogoController;
 use SeisMas\Controllers\ComercioController;
+use SeisMas\Controllers\DisponibilidadController;
 use SeisMas\Controllers\EventoController;
 use SeisMas\Controllers\MenuController;
+use SeisMas\Controllers\PlanController;
 use SeisMas\Controllers\PropuestaController;
 use SeisMas\Controllers\ResumenController;
 use SeisMas\Core\Auth;
@@ -95,6 +98,9 @@ $propuesta = new PropuestaController();
 $anfitrion = new AnfitrionController();
 $evento    = new EventoController();
 $resumen   = new ResumenController();
+$plan      = new PlanController();
+$franja    = new DisponibilidadController();
+$catalogo  = new CatalogoController();
 
 // Sondeo de salud: sin autenticación, para que el hosting o Railway puedan
 // verificar que el proceso responde.
@@ -142,6 +148,22 @@ $router->get('/anfitriones',         $protegida(static fn () => $anfitrion->list
 $router->post('/anfitriones',        $protegida(static fn () => $anfitrion->crear()));
 $router->put('/anfitriones/{id}',    $protegida(static fn (array $p) => $anfitrion->actualizar($p)));
 $router->delete('/anfitriones/{id}', $protegida(static fn (array $p) => $anfitrion->eliminar($p)));
+
+// --- Oferta: lo que hace competir al comercio por un grupo ---
+// Los planes dicen QUÉ ofrece y la disponibilidad CUÁNDO. El matching necesita
+// las dos cosas: con planes pero sin franjas (o al revés) el comercio sigue
+// siendo invisible para el algoritmo.
+$router->get('/intereses', $protegida(static fn () => $catalogo->intereses()));
+
+$router->get('/planes',         $protegida(static fn () => $plan->listar()));
+$router->post('/planes',        $protegida(static fn () => $plan->crear()));
+$router->put('/planes/{id}',    $protegida(static fn (array $p) => $plan->actualizar($p)));
+$router->delete('/planes/{id}', $protegida(static fn (array $p) => $plan->eliminar($p)));
+
+$router->get('/disponibilidad',         $protegida(static fn () => $franja->listar()));
+$router->post('/disponibilidad',        $protegida(static fn () => $franja->crear()));
+$router->put('/disponibilidad/{id}',    $protegida(static fn (array $p) => $franja->actualizar($p)));
+$router->delete('/disponibilidad/{id}', $protegida(static fn (array $p) => $franja->eliminar($p)));
 
 $router->get('/eventos',                  $protegida(static fn () => $evento->listar()));
 $router->post('/eventos',                 $protegida(static fn () => $evento->crear()));

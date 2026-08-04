@@ -54,6 +54,11 @@ export const routes: Routes = [
         title: 'Editar menú — Seis Más',
       },
       {
+        path: 'oferta',
+        loadComponent: () => import('./paginas/panel/oferta/oferta').then((m) => m.Oferta),
+        title: 'Tu oferta — Seis Más',
+      },
+      {
         path: 'propuestas',
         loadComponent: () => import('./paginas/panel/propuestas/propuestas').then((m) => m.Propuestas),
         title: 'Propuestas de bienvenida — Seis Más',

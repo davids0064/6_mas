@@ -475,6 +475,44 @@ a:hover { text-decoration: underline; }
 .asistente-nombre { font-size: 16px; font-weight: 700; }
 
 /* ---------------------------------------------------------------------------
+   Semana de disponibilidad.
+
+   Una fila por día en vez de siete tarjetas en rejilla: el horario semanal se
+   lee de arriba abajo, y en rejilla las columnas quedan tan estrechas que la
+   hora y sus botones se parten en varias líneas. Además, ver los días vacíos
+   uno debajo de otro es lo que hace evidente cuánto queda por llenar.
+   --------------------------------------------------------------------------- */
+.dia-semana {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: start;
+  gap: var(--e-m);
+  padding: var(--e-m) 0;
+  border-top: 1px solid var(--borde);
+}
+.dia-semana:first-child { border-top: 0; }
+.dia-nombre { font-weight: 700; padding-top: 6px; }
+.dia-franjas { display: flex; flex-direction: column; gap: var(--e-s); }
+.franja {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-m);
+  background: var(--superficie);
+  border-radius: var(--r-campo);
+  padding: var(--e-s) var(--e-m);
+  flex-wrap: wrap;
+}
+.franja-horas { font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 820px) {
+  /* En móvil el nombre del día pasa a ser un encabezado sobre su contenido:
+     con tres columnas no cabe nada legible. */
+  .dia-semana { grid-template-columns: 1fr; gap: var(--e-s); }
+  .dia-nombre { padding-top: 0; }
+}
+
+/* ---------------------------------------------------------------------------
    Responsive: el dashboard se usa sobre todo en escritorio, pero un dueño de
    comercio revisando su agenda desde el celular es un caso real.
    --------------------------------------------------------------------------- */

@@ -1,0 +1,375 @@
+<div class="encabezado-pagina">
+  <div>
+    <h1 class="t-titulo">Tu oferta</h1>
+    <p class="t-subtitulo mt-m">
+      Qué puedes ofrecer y cuándo puedes recibir. Con las dos cosas, Seis Más empieza a
+      enviarte grupos.
+    </p>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="aviso aviso-error" role="alert">{{ error() }}</div>
+}
+
+<!--
+  El estado de "compitiendo" va arriba y en una sola línea porque es la
+  pregunta que el comercio trae al entrar: ¿ya estoy recibiendo grupos o no?
+-->
+@if (!cargando()) {
+  @if (compitiendo()) {
+    <div class="aviso" role="status">
+      <strong>Estás recibiendo grupos.</strong>
+      Tienes {{ planesActivos() }} plan(es) activo(s) y {{ franjasActivas() }} horario(s)
+      disponible(s). Cuando se forme un grupo afín en tu ciudad, te lo asignamos.
+    </div>
+  } @else {
+    <div class="aviso aviso-error" role="status">
+      <strong>Todavía no compites por grupos.</strong>
+      {{ queFalta() }} Necesitas al menos un plan activo y un horario para que el sistema
+      pueda asignarte un grupo.
+    </div>
+  }
+}
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Planes                                                              -->
+<!-- ------------------------------------------------------------------ -->
+<section class="mt-m">
+  <div class="encabezado-pagina">
+    <div>
+      <h2 class="t-etiqueta">Planes</h2>
+      <p class="t-ayuda tenue mt-m">
+        Cada plan va atado a una categoría. Un grupo solo recibe tu plan si al menos la mitad
+        comparte ese interés.
+      </p>
+    </div>
+    <button type="button" class="boton boton-cta" (click)="nuevoPlan()">+ Nuevo plan</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="cargando">Cargando…</div>
+  } @else if (planes().length === 0) {
+    <div class="vacio">
+      <span class="emoji">🍽️</span>
+      Aún no tienes planes.
+      <p class="t-ayuda mt-m">
+        Una cena de tres tiempos, una cata guiada, un taller de dos horas… eso es un plan.
+      </p>
+      <div class="mt-m">
+        <button type="button" class="boton boton-primario boton-pequeno" (click)="nuevoPlan()">
+          Crear mi primer plan
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="rejilla rejilla-2">
+      @for (plan of planes(); track plan.id) {
+        <article class="tarjeta">
+          <div class="linea-separada">
+            <h3 class="t-etiqueta">{{ plan.titulo }}</h3>
+            @if (plan.activo) {
+              <span class="chip chip-exito">Activo</span>
+            } @else {
+              <span class="chip chip-neutro">Inactivo</span>
+            }
+          </div>
+
+          @if (plan.descripcion) {
+            <p class="t-subtitulo mt-m">{{ plan.descripcion }}</p>
+          }
+
+          <div class="linea mt-m">
+            <span class="chip chip-neutro">
+              {{ plan.interes_icono }} {{ plan.interes_nombre }}
+            </span>
+            <span class="chip chip-neutro">{{ plan.duracion_min }} min</span>
+            <span class="chip chip-neutro">
+              ${{ plan.precio.toLocaleString('es-CO') }} por persona
+            </span>
+            <span class="chip chip-neutro">hasta {{ plan.capacidad }}</span>
+          </div>
+
+          <div class="linea mt-m">
+            <button type="button" class="boton boton-primario boton-pequeno" (click)="editarPlan(plan)">
+              Editar
+            </button>
+            <button
+              type="button"
+              class="boton boton-secundario boton-pequeno"
+              (click)="alternarPlan(plan)"
+            >
+              {{ plan.activo ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button type="button" class="boton boton-peligro boton-pequeno" (click)="eliminarPlan(plan)">
+              Eliminar
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Disponibilidad                                                      -->
+<!-- ------------------------------------------------------------------ -->
+<section class="mt-m">
+  <div class="encabezado-pagina">
+    <div>
+      <h2 class="t-etiqueta">Cuándo puedes recibir</h2>
+      <p class="t-ayuda tenue mt-m">
+        Horarios que se repiten cada semana. El cupo es cuántos grupos distintos puedes
+        atender en esa franja.
+      </p>
+    </div>
+    <button type="button" class="boton boton-cta" (click)="nuevaFranja()">+ Nuevo horario</button>
+  </div>
+
+  @if (!cargando() && franjas().length === 0) {
+    <div class="vacio">
+      <span class="emoji">🗓️</span>
+      Aún no has dicho cuándo puedes recibir grupos.
+      <p class="t-ayuda mt-m">
+        Los planes se agendan con 48 horas de anticipación como mínimo, dentro de los
+        próximos 21 días.
+      </p>
+      <div class="mt-m">
+        <button type="button" class="boton boton-primario boton-pequeno" (click)="nuevaFranja()">
+          Agregar un horario
+        </button>
+      </div>
+    </div>
+  } @else {
+    <!-- La semana completa, incluidos los días vacíos: ver el hueco es lo que
+         hace obvio que se puede llenar. -->
+    <article class="tarjeta">
+      @for (dia of semana(); track dia.valor) {
+        <div class="dia-semana">
+          <div class="dia-nombre">{{ dia.nombre }}</div>
+
+          <div class="dia-franjas">
+            @if (dia.franjas.length === 0) {
+              <span class="t-ayuda tenue">Sin horarios este día.</span>
+            } @else {
+              @for (franja of dia.franjas; track franja.id) {
+                <div class="franja">
+                  <div class="linea">
+                    <span class="franja-horas">
+                      {{ franja.hora_inicio }} – {{ franja.hora_fin }}
+                    </span>
+                    <span class="chip chip-neutro">
+                      {{ franja.grupos_max }} grupo(s)
+                    </span>
+                    @if (!franja.activo) {
+                      <span class="chip chip-neutro">Pausado</span>
+                    }
+                  </div>
+
+                  <div class="linea">
+                    <button
+                      type="button"
+                      class="boton boton-primario boton-pequeno"
+                      (click)="editarFranja(franja)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="boton boton-secundario boton-pequeno"
+                      (click)="alternarFranja(franja)"
+                    >
+                      {{ franja.activo ? 'Pausar' : 'Reactivar' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="boton boton-peligro boton-pequeno"
+                      (click)="eliminarFranja(franja)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <button
+            type="button"
+            class="boton boton-secundario boton-pequeno"
+            (click)="nuevaFranja(dia.valor)"
+          >
+            + Agregar
+          </button>
+        </div>
+      }
+    </article>
+  }
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Modal: plan                                                         -->
+<!-- ------------------------------------------------------------------ -->
+@if (modalPlan()) {
+  <div class="fondo-modal" (click)="modalPlan.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2 class="t-etiqueta">{{ editandoPlan() ? 'Editar plan' : 'Nuevo plan' }}</h2>
+
+      @if (error()) {
+        <div class="aviso aviso-error mt-m" role="alert">{{ error() }}</div>
+      }
+
+      <form [formGroup]="formPlan" (ngSubmit)="guardarPlan()" novalidate class="mt-m">
+        <div class="campo" [class.invalido]="fallaPlan('titulo')">
+          <label for="plan-titulo">Título</label>
+          <input
+            id="plan-titulo"
+            type="text"
+            formControlName="titulo"
+            placeholder="Mesa sorpresa de tres tiempos"
+          />
+          @if (fallaPlan('titulo')) {
+            <span class="mensaje-error">Ponle un nombre a tu plan.</span>
+          }
+        </div>
+
+        <div class="campo" [class.invalido]="fallaPlan('interes_id')">
+          <label for="plan-interes">Categoría</label>
+          <select id="plan-interes" formControlName="interes_id">
+            <option value="">Elige una categoría…</option>
+            @for (interes of intereses(); track interes.id) {
+              <option [value]="interes.id">{{ interes.icono }} {{ interes.nombre }}</option>
+            }
+          </select>
+          <span class="t-ayuda tenue">
+            Determina a qué grupos les puede tocar tu plan.
+          </span>
+          @if (fallaPlan('interes_id')) {
+            <span class="mensaje-error">Elige la categoría de tu plan.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="plan-descripcion">Descripción</label>
+          <textarea
+            id="plan-descripcion"
+            formControlName="descripcion"
+            placeholder="Entrada, fuerte y postre, con la mesa del patio reservada."
+          ></textarea>
+        </div>
+
+        <div class="fila-campos">
+          <div class="campo" [class.invalido]="fallaPlan('duracion_min')">
+            <label for="plan-duracion">Duración (minutos)</label>
+            <input id="plan-duracion" type="number" min="1" formControlName="duracion_min" />
+            <span class="t-ayuda tenue">Tiene que caber entero en tu horario.</span>
+          </div>
+          <div class="campo">
+            <label for="plan-precio">Precio por persona</label>
+            <input id="plan-precio" type="number" min="0" formControlName="precio" />
+          </div>
+        </div>
+
+        <div class="campo" [class.invalido]="fallaPlan('capacidad')">
+          <label for="plan-capacidad">Capacidad</label>
+          <input id="plan-capacidad" type="number" min="6" formControlName="capacidad" />
+          <span class="t-ayuda tenue">
+            Mínimo 6: los grupos de Seis Más siempre llegan completos.
+          </span>
+          @if (fallaPlan('capacidad')) {
+            <span class="mensaje-error">La capacidad debe ser de al menos 6 personas.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label class="linea">
+            <input type="checkbox" formControlName="activo" class="casilla" />
+            <span>Activo — puede asignarse a un grupo</span>
+          </label>
+        </div>
+
+        <div class="linea mt-m">
+          <button type="submit" class="boton boton-cta" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
+          <button type="button" class="boton boton-secundario" (click)="modalPlan.set(false)">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Modal: franja                                                       -->
+<!-- ------------------------------------------------------------------ -->
+@if (modalFranja()) {
+  <div class="fondo-modal" (click)="modalFranja.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2 class="t-etiqueta">{{ editandoFranja() ? 'Editar horario' : 'Nuevo horario' }}</h2>
+
+      <!--
+        El error se repite dentro del modal porque es acá donde hay que
+        corregirlo: el aviso de la página queda tapado por el propio modal, y
+        el caso más común —una franja que se cruza con otra— llega justo al
+        intentar guardar.
+      -->
+      @if (error()) {
+        <div class="aviso aviso-error mt-m" role="alert">{{ error() }}</div>
+      }
+
+      <form [formGroup]="formFranja" (ngSubmit)="guardarFranja()" novalidate class="mt-m">
+        <div class="campo">
+          <label for="franja-dia">Día</label>
+          <!--
+            [ngValue] y no [value]: con [value] el control guardaría el día como
+            texto ("4"), y al editar una franja existente —cuyo dia_semana es
+            número— la comparación fallaría y el desplegable no preseleccionaría
+            nada. ngValue conserva el tipo.
+          -->
+          <select id="franja-dia" formControlName="dia_semana">
+            @for (dia of dias; track dia.valor) {
+              <option [ngValue]="dia.valor">{{ dia.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="fila-campos">
+          <div class="campo">
+            <label for="franja-inicio">Desde</label>
+            <input id="franja-inicio" type="time" formControlName="hora_inicio" />
+          </div>
+          <div class="campo">
+            <label for="franja-fin">Hasta</label>
+            <input id="franja-fin" type="time" formControlName="hora_fin" />
+          </div>
+        </div>
+
+        <div class="campo" [class.invalido]="fallaFranja('grupos_max')">
+          <label for="franja-cupo">¿Cuántos grupos puedes atender en esa franja?</label>
+          <input id="franja-cupo" type="number" min="1" formControlName="grupos_max" />
+          @if (fallaFranja('grupos_max')) {
+            <span class="mensaje-error">Tiene que ser al menos un grupo.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label class="linea">
+            <input type="checkbox" formControlName="activo" class="casilla" />
+            <span>Disponible — puedes recibir grupos en este horario</span>
+          </label>
+        </div>
+
+        <div class="linea mt-m">
+          <button type="submit" class="boton boton-cta" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
+          <button type="button" class="boton boton-secundario" (click)="modalFranja.set(false)">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

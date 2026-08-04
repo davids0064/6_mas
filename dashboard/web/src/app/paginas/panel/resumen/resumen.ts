@@ -28,6 +28,8 @@ export class ResumenPagina {
 
   /** A dónde lleva cada pendiente del onboarding. */
   private readonly rutaPorPendiente: Record<string, string> = {
+    plan: '/panel/oferta',
+    disponibilidad: '/panel/oferta',
     direccion: '/panel/mi-comercio',
     descripcion: '/panel/mi-comercio',
     anfitrion: '/panel/anfitriones',

@@ -38,7 +38,11 @@ class ResumenController
                   WHERE comercio_id = :cid AND deleted_at IS NULL)                       AS anfitriones_total,
                 (SELECT count(*) FROM eventos
                   WHERE comercio_id = :cid AND deleted_at IS NULL
-                    AND fecha_hora >= now() AND estado <> 'cancelado')                   AS eventos_proximos",
+                    AND fecha_hora >= now() AND estado <> 'cancelado')                   AS eventos_proximos,
+                (SELECT count(*) FROM comercio_planes
+                  WHERE comercio_id = :cid AND deleted_at IS NULL AND activo)            AS planes_activos,
+                (SELECT count(*) FROM comercio_disponibilidad
+                  WHERE comercio_id = :cid AND activo)                                   AS franjas_activas",
             ['cid' => $cid]
         );
 
@@ -79,6 +83,23 @@ class ResumenController
     private function pendientes(?array $comercio, array $contadores): array
     {
         $pendientes = [];
+
+        // La oferta va primero porque es la única condición dura: sin un plan
+        // activo y una franja activa el comercio no compite por ningún grupo,
+        // por muy completo que tenga el resto del perfil. Los demás pendientes
+        // mejoran la experiencia; este determina si existe.
+        if ((int) $contadores['planes_activos'] === 0) {
+            $pendientes[] = [
+                'clave' => 'plan',
+                'texto' => 'Crea un plan: es lo que Seis Más le ofrece a un grupo.',
+            ];
+        }
+        if ((int) $contadores['franjas_activas'] === 0) {
+            $pendientes[] = [
+                'clave' => 'disponibilidad',
+                'texto' => 'Di en qué horarios puedes recibir grupos.',
+            ];
+        }
 
         if (empty($comercio['direccion']) || empty($comercio['ciudad'])) {
             $pendientes[] = [

@@ -26,6 +26,9 @@ export class Panel {
     // las rutas hijas porque '/panel' es prefijo de todas.
     { ruta: '/panel', etiqueta: 'Inicio', emoji: '🏠', exacta: true },
     { ruta: '/panel/mi-comercio', etiqueta: 'Mi comercio', emoji: '🏪', exacta: false },
+    // Va arriba de Menús a propósito: es lo único que determina si el comercio
+    // recibe grupos o no. Un menú bonito sin oferta cargada no le sirve de nada.
+    { ruta: '/panel/oferta', etiqueta: 'Tu oferta', emoji: '🎯', exacta: false },
     { ruta: '/panel/menus', etiqueta: 'Menús', emoji: '📖', exacta: false },
     { ruta: '/panel/propuestas', etiqueta: 'Propuestas', emoji: '🎁', exacta: false },
     { ruta: '/panel/anfitriones', etiqueta: 'Anfitriones', emoji: '🤝', exacta: false },

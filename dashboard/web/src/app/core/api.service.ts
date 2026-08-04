@@ -14,10 +14,13 @@ import {
   Anfitrion,
   Comercio,
   Evento,
+  Franja,
+  Interes,
   MenuCompleto,
   MenuItem,
   MenuResumen,
   MenuSeccion,
+  Plan,
   Propuesta,
   RespuestaAsistentes,
   Resumen,
@@ -103,6 +106,48 @@ export class ApiService {
 
   eliminarPropuesta(id: string) {
     return this.http.delete<void>(`${this.base}/propuestas/${id}`);
+  }
+
+  // --- Oferta: planes y disponibilidad ---
+  // Es lo que hace competir al comercio por un grupo. El matching necesita las
+  // dos cosas: con planes pero sin franjas (o al revés) el comercio es
+  // invisible para el algoritmo.
+
+  /** Catálogo de categorías, para el selector al crear un plan. */
+  intereses() {
+    return this.http.get<Interes[]>(`${this.base}/intereses`);
+  }
+
+  planes() {
+    return this.http.get<Plan[]>(`${this.base}/planes`);
+  }
+
+  crearPlan(datos: Partial<Plan>) {
+    return this.http.post<Plan>(`${this.base}/planes`, datos);
+  }
+
+  actualizarPlan(id: string, datos: Partial<Plan>) {
+    return this.http.put<Plan>(`${this.base}/planes/${id}`, datos);
+  }
+
+  eliminarPlan(id: string) {
+    return this.http.delete<void>(`${this.base}/planes/${id}`);
+  }
+
+  disponibilidad() {
+    return this.http.get<Franja[]>(`${this.base}/disponibilidad`);
+  }
+
+  crearFranja(datos: Partial<Franja>) {
+    return this.http.post<Franja>(`${this.base}/disponibilidad`, datos);
+  }
+
+  actualizarFranja(id: string, datos: Partial<Franja>) {
+    return this.http.put<Franja>(`${this.base}/disponibilidad/${id}`, datos);
+  }
+
+  eliminarFranja(id: string) {
+    return this.http.delete<void>(`${this.base}/disponibilidad/${id}`);
   }
 
   // --- Anfitriones ---
