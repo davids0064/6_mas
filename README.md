@@ -250,8 +250,8 @@ matching ni ver un 500 si el matching falla.
 
 ### Pruebas
 
-Tres capas, de la más barata a la más cara. Antes de desplegar se corren las
-tres.
+Cuatro capas, de la más barata a la más cara. Antes de desplegar se corren las
+cuatro.
 
 **1. Escenarios del algoritmo (sin base ni servidor).** 53 casos sobre los dos
 módulos puros: Jaccard y pesos del test, exclusión de las preguntas sensibles,
@@ -264,13 +264,33 @@ que tiene que caber entero y el orden afinidad → tier → fecha.
 cd backend && npm test
 ```
 
-**2. Camino feliz end-to-end (`prueba_match.js`).** Siembra 4 restaurantes (dos
+**2. La frontera de datos (`prueba_frontera.js`).** 92 condiciones sobre los
+GRANTs, sin servidor y sin sembrar nada: pregunta por permisos, no por filas,
+así que corre contra una base recién migrada. Verifica que ninguno de los dos
+roles es superusuario (desplegar con uno anula la frontera entera sin cambiar
+una línea de SQL), que cada rol lee y escribe lo suyo, que **no** puede ni leer
+ni escribir una sola tabla del otro contexto, y que las vistas de frontera no
+filtran por la puerta de atrás lo que los GRANTs esconden — un `u.email`
+agregado al `SELECT` de `v_evento_asistentes` dejaría pasar todos los `REVOKE`
+y filtraría el correo igual.
+
+```bash
+cd backend && npm run test:frontera
+```
+
+Se conecta con el `DATABASE_URL` del dueño de la base y usa `SET ROLE` para
+hacerse pasar por cada rol acotado: los mismos chequeos de privilegio que una
+conexión real, sin tener que ponerle a un CI las dos contraseñas. Sale con
+código 1 si la frontera se abre — está verificado abriendo un `GRANT SELECT ON
+usuarios TO seis_dashboard` a mano y comprobando que la prueba lo detecta.
+
+**3. Camino feliz end-to-end (`prueba_match.js`).** Siembra 4 restaurantes (dos
 con la misma oferta y distinto tier, uno premium poco afín, uno en otra
 ciudad), registra 7 usuarios sin llamar al matching y valida 15 condiciones
 sobre lo que el sistema hizo solo, incluido el rescate de un grupo pendiente
 cuando aparece oferta nueva.
 
-**3. Bordes end-to-end (`prueba_escenarios.js`).** 38 condiciones sobre lo que
+**4. Bordes end-to-end (`prueba_escenarios.js`).** 38 condiciones sobre lo que
 duele en producción: 12 tests de personalidad enviados **en paralelo** (que no
 produzcan grupos con la misma gente ni de 5 o 7), la agenda de un comercio
 llenándose hasta que los grupos de más quedan sin plan en vez de sobrevender la

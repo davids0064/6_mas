@@ -42,6 +42,15 @@ ERROR:  permission denied for table usuarios
 
 El rol `seis_app` es simétrico: la API del móvil no puede leer `comercios.password_hash`.
 
+Esto no es una promesa del README: `backend/scripts/prueba_frontera.js` lo ejecuta. Son 92
+condiciones — las dos consultas de arriba, cada tabla de cada contexto contra el rol del otro, que
+ninguno de los dos roles sea superusuario, y que las tres vistas de frontera no expongan las
+columnas que los GRANTs esconden.
+
+```bash
+cd backend && npm run test:frontera
+```
+
 ---
 
 ## Correr en local
