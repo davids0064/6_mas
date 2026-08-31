@@ -329,6 +329,10 @@ El backend vive en el proyecto **seis-mas** de Railway, con dos servicios:
 `Postgres` y `api`. La API responde en
 `https://api-production-2a3c5.up.railway.app`.
 
+La API PHP del dashboard es un tercer servicio del mismo proyecto, todavía sin
+desplegar: se construye con `dashboard/api/Dockerfile` y no con el
+autodetector, por los motivos que explica `dashboard/README.md`.
+
 ### El detalle que rompe el despliegue
 
 Este repo es un monorepo y `railway up` sube **la raíz del repositorio**, no el

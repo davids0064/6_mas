@@ -163,7 +163,35 @@ RewriteRule ^ index.html [L]
 
 ### API
 
-Railway detecta PHP automáticamente. Variables a definir en el servicio:
+**Railway NO detecta esta API automáticamente**, y conviene saber por qué antes de intentarlo: el
+autodetector reconoce un proyecto PHP por su `composer.json`, y esta API no tiene ninguno a
+propósito — no usa dependencias, trae su propio autoloader PSR-4 de cinco líneas y se despliega
+copiando la carpeta. Por eso el servicio se construye con el `Dockerfile` de `dashboard/api/`, que
+además deja explícitas las dos cosas que ningún autodetector adivina: que el document root es
+`public/` y no la raíz (con la raíz, `GET /.env` y `GET /src/Core/Db.php` serían archivos
+estáticos descargables) y que hace falta la extensión `pdo_pgsql`.
+
+```bash
+# desde la raíz del repo: es un monorepo y `railway up` sube la raíz,
+# no el directorio desde el que se lo invoca
+railway up ./dashboard/api --path-as-root --service dashboard-api
+```
+
+`railway.json` fija el builder en `DOCKERFILE` y pone el healthcheck en `/health`, así que un
+despliegue que arranque pero no responda no se marca como bueno.
+
+Para probar la imagen antes de subirla:
+
+```bash
+docker build -t seis-mas-dashboard-api dashboard/api
+docker run --rm -p 8080:8080 --env-file dashboard/api/.env seis-mas-dashboard-api
+```
+
+El `.env` se pasa por `--env-file` y **no** entra en la imagen (`.dockerignore`): en Railway las
+variables vienen del entorno del servicio, y una imagen con credenciales dentro es una credencial
+que viaja a un registro y queda en el historial de capas.
+
+Variables a definir en el servicio:
 
 | Variable | Valor |
 |---|---|
@@ -173,6 +201,8 @@ Railway detecta PHP automáticamente. Variables a definir en el servicio:
 | `JWT_SECRET` | 64 caracteres aleatorios, distinto al de desarrollo |
 | `CORS_ORIGENES` | `https://tudominio.com` |
 | `APP_DEBUG` | `false` |
+
+`PORT` la inyecta Railway y Apache la lee del entorno al arrancar; no hay que definirla.
 
 Antes de producción, cambia las contraseñas de desarrollo de los roles:
 

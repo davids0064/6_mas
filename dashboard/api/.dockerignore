@@ -1,0 +1,12 @@
+# El .env nunca entra a la imagen: en Railway las variables vienen del entorno
+# del servicio, y una imagen con credenciales dentro es una credencial que
+# viaja a un registro y queda en el historial de capas.
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+Dockerfile
+.dockerignore
+README.md
