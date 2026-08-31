@@ -71,7 +71,25 @@ Dentro de Xcode:
 4. Selecciona el esquema `SeisMas` y el destino (simulador o dispositivo
    físico conectado) en la barra superior antes de compilar (⌘R).
 
-## 5. Conectar la app al backend local
+## 5. Conectar la app al backend
+
+`src/config/env.js` resuelve la URL sola a partir de `__DEV__`, la global que
+inyecta Metro:
+
+| Build | A dónde apunta |
+| --- | --- |
+| Release (Xcode en Release, `assembleRelease`, TestFlight) | `https://api-production-2a3c5.up.railway.app` |
+| Debug, simulador de iOS | `http://localhost:3000` |
+| Debug, emulador de Android | `http://10.0.2.2:3000` |
+| Debug, dispositivo físico | la IP LAN de tu Mac (`USAR_DISPOSITIVO_FISICO = true`) |
+
+No hay ninguna constante que haya que acordarse de cambiar antes de compilar
+para producción: una build de release apunta a Railway aunque la bandera de
+dispositivo físico haya quedado encendida. Al revés sí es manual —
+`USAR_DISPOSITIVO_FISICO` distingue lo que Metro no puede distinguir, porque
+simulador y teléfono son los dos "desarrollo".
+
+### Contra el backend local
 
 El backend corre en `http://localhost:3000` (ver `backend/`). Desde el
 **simulador de iOS**, `localhost` apunta a la Mac host, así que funciona
@@ -114,9 +132,9 @@ un backend local sin HTTPS, hay dos opciones:
   </dict>
   ```
 
-- **Para producción**: el backend debe servir HTTPS (ej. detrás de un proxy
-  con certificado válido); no se debe llevar ninguna excepción de ATS a la
-  build de release.
+- **Para producción**: no hace falta ninguna excepción. La API de Railway sirve
+  HTTPS con certificado válido, así que la build de release pasa ATS tal cual y
+  las excepciones de arriba se quedan donde tienen que quedarse: en desarrollo.
 
 ## 6. Variables de entorno del cliente RN
 
@@ -133,7 +151,7 @@ mobile/
   README.md
   src/
     config/
-      env.js            # URLs de backend por entorno (simulador / dispositivo)
+      env.js            # URLs de backend por entorno (release → Railway; debug → local)
     services/
       api.js             # Cliente HTTP centralizado hacia el backend
     screens/
