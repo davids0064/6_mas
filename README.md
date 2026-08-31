@@ -248,24 +248,118 @@ El disparo automático corre **después** de responderle al cliente y nunca
 propaga su error: quien acaba de contestar 20 preguntas no debe esperar al
 matching ni ver un 500 si el matching falla.
 
-### Prueba end-to-end
+### Pruebas
 
-Siembra 4 restaurantes (dos con la misma oferta y distinto tier, uno premium
-poco afín, uno en otra ciudad), registra 6 usuarios sin llamar al matching y
-valida 15 condiciones sobre lo que el sistema hizo solo:
+Tres capas, de la más barata a la más cara. Antes de desplegar se corren las
+tres.
+
+**1. Escenarios del algoritmo (sin base ni servidor).** 53 casos sobre los dos
+módulos puros: Jaccard y pesos del test, exclusión de las preguntas sensibles,
+formación de grupos (5 candidatos no forman nada, 13 forman 2 y sobra 1),
+localidad como filtro duro, semilla por antigüedad, determinismo, y del lado de
+la programación las 48h, la ventana de 21 días, el cupo de la franja, el plan
+que tiene que caber entero y el orden afinidad → tier → fecha.
 
 ```bash
-psql -d seis_mas -f db/migrations/002_matching_automatico.sql
-cd backend && npm start                        # en otra terminal
-node backend/scripts/prueba_match.js           # deja los datos
-node backend/scripts/prueba_match.js --limpiar # los borra al terminar
+cd backend && npm test
 ```
 
-Requiere `ADMIN_API_KEY` en `backend/.env`: la siembra y el diagnóstico usan
-rutas de administración. El script se registra como administrador para eso,
-pero escribe los intereses y el test de cada usuario **con el token de ese
-usuario** — ni él puede hacerlo por otra persona, que es justamente lo que la
-autorización garantiza.
+**2. Camino feliz end-to-end (`prueba_match.js`).** Siembra 4 restaurantes (dos
+con la misma oferta y distinto tier, uno premium poco afín, uno en otra
+ciudad), registra 7 usuarios sin llamar al matching y valida 15 condiciones
+sobre lo que el sistema hizo solo, incluido el rescate de un grupo pendiente
+cuando aparece oferta nueva.
+
+**3. Bordes end-to-end (`prueba_escenarios.js`).** 38 condiciones sobre lo que
+duele en producción: 12 tests de personalidad enviados **en paralelo** (que no
+produzcan grupos con la misma gente ni de 5 o 7), la agenda de un comercio
+llenándose hasta que los grupos de más quedan sin plan en vez de sobrevender la
+franja, un grupo cancelado devolviendo a sus miembros al pool, `simular`
+haciendo `ROLLBACK` de verdad, las fronteras de autorización (sin token, sin
+clave, clave mala, datos de otro) y el ciclo de feedback.
+
+```bash
+cd backend && npm start                             # en otra terminal
+node backend/scripts/prueba_match.js --limpiar
+node backend/scripts/prueba_escenarios.js --limpiar
+```
+
+Los dos scripts requieren `ADMIN_API_KEY` en `backend/.env`: la siembra y el
+diagnóstico usan rutas de administración. Se registran como administrador para
+eso, pero escriben los intereses y el test de cada usuario **con el token de
+ese usuario** — ni ellos pueden hacerlo por otra persona, que es justamente lo
+que la autorización garantiza.
+
+Conviene correrlos contra una base desechable y no contra la de desarrollo: el
+matching consume el pool de candidatos, así que los datos que ya haya en la
+base cambian el resultado. Con base propia, además, se verifica que el sistema
+funciona **desde cero**, que es la situación del despliegue:
+
+```bash
+createdb seis_mas_test
+for f in db/schema.sql db/migrations/*.sql; do psql -q -d seis_mas_test -f $f; done
+DATABASE_URL=postgres://…/seis_mas_test PORT=3010 npm start   # en otra terminal
+DATABASE_URL=postgres://…/seis_mas_test API_URL=http://localhost:3010 \
+  node backend/scripts/prueba_match.js --limpiar
+```
+
+## Despliegue del backend (Railway)
+
+El backend vive en el proyecto **seis-mas** de Railway, con dos servicios:
+`Postgres` y `api`. La API responde en
+`https://api-production-2a3c5.up.railway.app`.
+
+### El detalle que rompe el despliegue
+
+Este repo es un monorepo y `railway up` sube **la raíz del repositorio**, no el
+directorio desde el que se lo invoca. Sin acotarlo, el builder ve `backend/`,
+`dashboard/`, `mobile/` y `db/` al mismo nivel, no reconoce ningún proyecto y
+falla con "could not determine how to build the app". La forma correcta:
+
+```bash
+railway up ./backend --path-as-root --service api
+```
+
+`--path-as-root` hace que el archivo subido tenga `backend/` como raíz, que es
+lo que convierte a este repo en algo desplegable sin mover archivos.
+
+### Variables del servicio `api`
+
+`DATABASE_URL`, `JWT_SECRET`, `JWT_TTL_SEGUNDOS`, `JWT_ISSUER`,
+`ADMIN_API_KEY` y `BCRYPT_SALT_ROUNDS` (12 en producción, 10 en local). Se
+consultan con `railway variables --service api --kv`.
+
+`CORS_ORIGENES` **no está definida** a propósito: todavía no hay ningún cliente
+de navegador. La app móvil no la necesita (fetch nativo no aplica CORS). Cuando
+se despliegue el dashboard hay que agregar su dominio, o la SPA no va a poder
+hablar con su API.
+
+### La base
+
+`DATABASE_URL` apunta a `postgres.railway.internal` (red privada del proyecto,
+no expuesta a internet) y se conecta con el rol **`seis_app`**, no con el
+superusuario: la frontera entre el contexto social y el comercial la sostiene
+Postgres, y desplegar con el superusuario la anularía por completo.
+
+Consecuencia verificada en producción: el router `/api/comercios` responde 500
+con este rol, porque `seis_app` tiene `REVOKE ALL` sobre esa tabla. No es una
+falla, es la frontera funcionando — ese contexto lo administra el dashboard
+PHP con `seis_dashboard`. Pero implica que `prueba_match.js`, que siembra
+comercios por esas rutas, **no se puede correr contra el backend desplegado**:
+la siembra hay que hacerla del lado comercio.
+
+El esquema se carga por SSH, sin abrir la base a internet:
+
+```bash
+railway ssh keys add                       # una sola vez
+railway ssh --service Postgres "psql -U postgres -d railway -v ON_ERROR_STOP=1" \
+  < db/schema.sql
+# ídem para cada archivo de db/migrations/
+```
+
+Las contraseñas de `seis_app` y `seis_dashboard` que crea la migración son de
+desarrollo local. En producción se reemplazan con `ALTER ROLE … PASSWORD` por
+claves generadas, y esas claves no viven en el repositorio.
 
 ## Decisiones de diseño relevantes (resumen)
 

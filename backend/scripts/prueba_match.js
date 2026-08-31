@@ -142,7 +142,29 @@ const PERFILES = [
       disposicion: 'si', valores: 'si',
     },
   },
+  {
+    // El sexto de Pereira. Va después de Felipe a propósito: el grupo tiene
+    // que cerrarse con él y no con el clon de Manizales, que es exactamente lo
+    // que la prueba quiere demostrar.
+    nombre: 'Gabriela Trejos', genero: 'Femenino',
+    intereses: ['Gastronomía', 'Bienestar', 'Música'],
+    respuestas: {
+      edad: '25_31', genero_biologico: 'femenino', identidad: 'hetero',
+      temperamento: 'extrovertido', localidad: 'pereira', actividades: 'sociales',
+      estudios: 'profesional', estado_civil: 'soltero_feliz', planes: 'fiestas',
+      decisiones: 'flexibles', ideas: 'innovadoras', plan_musical: 'pop',
+      animal_favorito: 'agua', zodiaco: 'a_veces', exploracion: 'aventurero',
+      antiestres: 'amistades', relacionamiento: 'seguidor', informacion: 'culturales',
+      disposicion: 'si', valores: 'si',
+    },
+  },
 ];
+
+// Cuántos de los perfiles de arriba viven en Pereira. La prueba se apoya en
+// que sean exactamente TAMANO_GRUPO: si fueran menos, el grupo solo se
+// formaría cuando la base ya tuviera candidatos de otra corrida, y la prueba
+// pasaría o fallaría según con qué datos se la encuentre.
+const PEREIRANOS = PERFILES.filter((p) => p.respuestas.localidad === 'pereira').length;
 
 /**
  * Hace una petición a la API.
@@ -296,7 +318,8 @@ async function main() {
   verificar(!!grupoAuto, 'se creó un grupo automáticamente, sin llamar a /api/matching/ejecutar');
   if (!grupoAuto) throw new Error('El matching automático no produjo ningún grupo.');
   console.log(`\n  → El grupo se cerró solo al completar el test ${usuarioQueCerroElGrupo}.`);
-  console.log(`    (el pool ya tenía usuarios de la base, por eso pudo cerrarse antes del sexto sembrado)`);
+  console.log(`    (${PEREIRANOS} perfiles de Pereira: el grupo cierra con el último, salvo que la`);
+  console.log(`     base ya tuviera candidatos en espera de otra corrida)`);
 
   // --- 3. El grupo y su plan ----------------------------------------------
   const detalle = (await pedir('GET', `/api/grupos/${grupoAuto.id}`)).datos;
