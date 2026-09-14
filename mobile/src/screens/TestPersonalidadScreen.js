@@ -273,7 +273,7 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
       // pasar por el registro) no se llama al backend: respondería 401. Se
       // continúa el flujo sin persistir.
       if (sesion.haySesion()) {
-        await api.enviarTestPersonalidad(todas, null);
+        await api.enviarTestPersonalidad(todas);
       } else {
         console.warn('[TestPersonalidad] sin sesión: respuestas no persistidas');
       }

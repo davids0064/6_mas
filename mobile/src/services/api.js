@@ -61,6 +61,16 @@ export const api = {
   },
   cerrarSesion: () => sesion.limpiar(),
 
+  // Borrado de cuenta. El backend hace soft delete (marca `deleted_at`), pero
+  // desde el cliente es definitivo: el usuario deja de poder entrar. La sesión
+  // se limpia acá mismo para que no quede un token vivo apuntando a una cuenta
+  // que ya no existe — si la pantalla se olvidara de hacerlo, la siguiente
+  // llamada saldría con una credencial muerta.
+  eliminarMiCuenta: async () => {
+    await solicitud('/api/usuarios/yo', { method: 'DELETE' });
+    sesion.limpiar();
+  },
+
   // --- Usuario autenticado ---
   // No hay obtenerUsuario(id): el backend ya no expone /api/usuarios/:id, así
   // que no existe forma de pedir el perfil de otra persona.
@@ -72,12 +82,22 @@ export const api = {
   obtenerMiGrupo: () => solicitud('/api/usuarios/yo/grupo'),
   obtenerMisEventos: () => solicitud('/api/usuarios/yo/eventos'),
 
+  // El sitio al que va el grupo: carta publicada, qué se encuentran al llegar,
+  // horario y cómo llegar. El backend comprueba que el evento sea tuyo.
+  obtenerLocalDelPlan: (eventoId) => solicitud(`/api/usuarios/yo/eventos/${eventoId}/local`),
+
   // --- Test de personalidad ---
-  enviarTestPersonalidad: (respuestas, resultado) =>
+  // El `resultado` ya no viaja desde acá: lo calcula el backend con las
+  // respuestas. Antes se mandaba `null` y se guardaba `null`, así que veinte
+  // preguntas no devolvían nada.
+  enviarTestPersonalidad: (respuestas) =>
     solicitud('/api/usuarios/yo/test-personalidad', {
       method: 'POST',
-      body: { respuestas, resultado },
+      body: { respuestas },
     }),
+
+  // Devuelve null (204) si todavía no hizo el test.
+  obtenerMiPerfilPersonalidad: () => solicitud('/api/usuarios/yo/perfil-personalidad'),
 
   // --- Catálogos (públicos: los pide el formulario de registro, antes de que
   // exista sesión) ---

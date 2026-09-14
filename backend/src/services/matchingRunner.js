@@ -168,7 +168,77 @@ function serializarGrupo(grupo, plan) {
  *                                    contra la misma transacción, así que
  *                                    refleja exactamente lo que pasaría).
  */
+// Horas de gracia antes de cerrar un grupo cuyo plan ya pasó. Sin margen, un
+// grupo que cena a las 19:30 volvería al pool esa misma noche, con la gente
+// todavía en la mesa.
+const HORAS_GRACIA_CIERRE = 12;
+
+/**
+ * Cierra los grupos cuyo plan ya ocurrió y devuelve a sus miembros al pool.
+ *
+ * Existe porque no existía: `grupos.estado` se escribía para pasar a
+ * 'completo' y a 'activo', y nunca a 'finalizado'. Como cargarCandidatos()
+ * excluye a quien pertenezca a un grupo vivo, el efecto era que una persona
+ * recibía un plan y no volvía a entrar al emparejamiento NUNCA. La app servía
+ * una vez y después no hacía nada más, sin fallar ni avisar.
+ *
+ * Se cierra también el grupo al que le cancelaron su único plan: esos seis
+ * quedaban igual de atrapados, y encima sin haber salido.
+ *
+ * Va en su propia transacción, y a propósito. ejecutar() hace ROLLBACK cuando
+ * no junta seis candidatos —que es el caso normal en una ciudad con poca
+ * gente—, así que cerrar dentro de esa transacción desharía el cierre justo en
+ * las corridas que más lo necesitan.
+ *
+ * Cerrar un grupo NO borra su historial: la pertenencia (`grupo_miembros`)
+ * queda, así que /yo/eventos sigue devolviendo el plan pasado y la valoración
+ * sigue disponible. Lo único que cambia es que deja de ser "tu grupo actual".
+ */
+async function cerrarGruposTerminados() {
+  const cliente = await db.pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    await cliente.query('SELECT pg_advisory_xact_lock($1)', [LOCK_MATCHING]);
+
+    const { rows } = await cliente.query(
+      `UPDATE grupos g
+          SET estado = 'finalizado'
+        WHERE g.estado = 'activo'
+          AND g.deleted_at IS NULL
+          -- Tiene al menos un evento: un grupo activo sin ninguno es un estado
+          -- inconsistente que no se arregla cerrándolo a ciegas.
+          AND EXISTS (
+            SELECT 1 FROM eventos e
+             WHERE e.grupo_id = g.id AND e.deleted_at IS NULL
+          )
+          -- Y ninguno pendiente: ni futuro, ni dentro de la ventana de gracia.
+          AND NOT EXISTS (
+            SELECT 1 FROM eventos e
+             WHERE e.grupo_id = g.id
+               AND e.deleted_at IS NULL
+               AND e.estado <> 'cancelado'
+               AND e.fecha_hora > now() - ($1::text || ' hours')::interval
+          )
+        RETURNING g.id`,
+      [HORAS_GRACIA_CIERRE]
+    );
+
+    await cliente.query('COMMIT');
+    return { grupos_cerrados: rows.length, ids: rows.map((r) => r.id) };
+  } catch (err) {
+    await cliente.query('ROLLBACK');
+    throw err;
+  } finally {
+    cliente.release();
+  }
+}
+
 async function ejecutar(opciones = {}) {
+  // Antes de leer el pool: quien ya vivió su plan vuelve a estar disponible.
+  // Si no se hiciera acá, esa gente no volvería a aparecer como candidata
+  // nunca, y el pool se iría vaciando con cada grupo formado.
+  const cerrados = await cerrarGruposTerminados();
+
   const cliente = await db.pool.connect();
   try {
     await cliente.query('BEGIN');
@@ -182,6 +252,7 @@ async function ejecutar(opciones = {}) {
       return {
         ejecutado: false,
         motivo: `Se necesitan al menos ${matching.TAMANO_GRUPO} candidatos y hay ${candidatos.length}.`,
+        grupos_cerrados: cerrados.grupos_cerrados,
         candidatos: candidatos.length,
         grupos_creados: 0,
         grupos: [],
@@ -269,6 +340,7 @@ async function ejecutar(opciones = {}) {
     return {
       ejecutado: !opciones.simular,
       simulacion: !!opciones.simular,
+      grupos_cerrados: cerrados.grupos_cerrados,
       candidatos: candidatos.length,
       grupos_creados: opciones.simular ? 0 : resultado.length,
       grupos_propuestos: resultado.length,
@@ -467,6 +539,8 @@ function programarEnSegundoPlano(motivo, opciones = {}) {
 module.exports = {
   ESTADOS_OCUPADOS,
   cargarCandidatos,
+  cerrarGruposTerminados,
+  HORAS_GRACIA_CIERRE,
   cargarOferta,
   elegirPlan,
   ejecutar,

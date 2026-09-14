@@ -4,6 +4,9 @@ const db = require('../config/db');
 const jwt = require('../config/jwt');
 const { exigirUsuario } = require('../middleware/auth');
 const matchingRunner = require('../services/matchingRunner');
+const matching = require('../services/matching');
+const { edadEnAnios, EDAD_MINIMA } = require('../services/edad');
+const perfilPersonalidad = require('../services/perfilPersonalidad');
 
 const router = express.Router();
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
@@ -23,6 +26,25 @@ router.post('/', async (req, res, next) => {
     }
     if (String(password).length < 8) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+    }
+    // La mayoría de edad se validaba SOLO en el formulario de la app, es decir,
+    // en el lado que cualquiera puede saltarse llamando a la API directamente.
+    // Para un producto que sienta a seis desconocidos en una mesa, la edad no
+    // es un campo de formulario más: es el requisito que sostiene la
+    // clasificación por edad de la ficha de la App Store y la responsabilidad
+    // legal de quien organiza el encuentro. Se comprueba aquí, que es donde no
+    // se puede eludir.
+    if (!fecha_nacimiento) {
+      return res.status(400).json({ error: 'La fecha de nacimiento es obligatoria.' });
+    }
+    const edad = edadEnAnios(fecha_nacimiento);
+    if (edad === null) {
+      return res.status(400).json({ error: 'La fecha de nacimiento no es válida.' });
+    }
+    if (edad < EDAD_MINIMA) {
+      return res
+        .status(400)
+        .json({ error: `Debes ser mayor de ${EDAD_MINIMA} años para usar Seis Más.` });
     }
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -156,15 +178,86 @@ router.get('/yo/grupo', async (req, res, next) => {
     );
     if (!rows[0]) return res.status(204).send();
 
+    // Se piden también los intereses y las respuestas del test de cada miembro
+    // para poder decir QUÉ tienen en común, no solo quiénes son. Antes esta
+    // ruta devolvía cuatro columnas —id, nombre, rol y fecha— y la pantalla
+    // pintaba seis nombres sueltos: el grupo se presentaba como una lista de
+    // desconocidos, que es exactamente lo que la app debería estar deshaciendo.
+    //
+    // Las respuestas NO salen de acá: se usan para calcular la afinidad y se
+    // descartan antes de responder. Compartir mesa no da derecho a leer el test
+    // de nadie.
     const { rows: miembros } = await db.query(
-      `SELECT u.id, u.nombre, gm.rol, gm.fecha_union
+      `SELECT u.id, u.nombre, gm.rol, gm.fecha_union,
+              t.respuestas,
+              COALESCE(array_agg(i.nombre ORDER BY i.nombre)
+                       FILTER (WHERE i.nombre IS NOT NULL), '{}') AS intereses
          FROM grupo_miembros gm
          JOIN usuarios u ON u.id = gm.usuario_id
+         LEFT JOIN tests_personalidad t ON t.usuario_id = u.id AND t.vigente
+         LEFT JOIN usuario_intereses ui ON ui.usuario_id = u.id
+         LEFT JOIN pa_intereses i ON i.id = ui.interes_id AND i.activo
         WHERE gm.grupo_id = $1
+        GROUP BY u.id, u.nombre, gm.rol, gm.fecha_union, t.respuestas
         ORDER BY gm.fecha_union`,
       [rows[0].id]
     );
-    res.json({ ...rows[0], miembros });
+
+    const yo = miembros.find((m) => m.id === req.usuarioId);
+
+    const publicos = miembros.map((m) => {
+      const { respuestas, ...resto } = m;
+      const esUnoMismo = m.id === req.usuarioId;
+
+      // Solo el primer nombre de los demás. El nombre completo de cinco
+      // desconocidos es un dato de contacto disfrazado de cortesía.
+      const nombre = esUnoMismo ? m.nombre : String(m.nombre || '').trim().split(/\s+/)[0];
+
+      if (esUnoMismo || !yo) return { ...resto, nombre, es_tu_perfil: esUnoMismo };
+
+      const comun = matching.explicarAfinidad(
+        { intereses: yo.intereses, respuestas: yo.respuestas },
+        { intereses: m.intereses, respuestas: m.respuestas }
+      );
+      return {
+        ...resto,
+        nombre,
+        es_tu_perfil: false,
+        // Lo que tienen en común, que es lo único que hace falta para romper
+        // el hielo. El score se redondea a dos decimales: presentarle a alguien
+        // un 0.7382417 de afinidad con otra persona es ruido con aire de dato.
+        intereses_comunes: comun.intereses_comunes,
+        afinidad: Math.round(comun.score * 100) / 100,
+      };
+    });
+
+    // Qué comparte el grupo, que es lo que explica por qué se formó.
+    //
+    // El criterio es "al menos la mitad", no "los seis". Con la intersección
+    // estricta el resultado es casi siempre vacío —basta una persona que no
+    // marcó Gastronomía para borrarla— y la pantalla quedaría en blanco
+    // justamente en el grupo que sí se formó por gastronomía. La mitad es
+    // además el mismo umbral con el que services/programacion.js decide si un
+    // plan le sirve al grupo, así que lo que se muestra coincide con lo que el
+    // sistema usó para elegir el local.
+    const cuenta = new Map();
+    for (const m of miembros) {
+      for (const interes of m.intereses || []) {
+        cuenta.set(interes, (cuenta.get(interes) || 0) + 1);
+      }
+    }
+    const minimo = Math.ceil(miembros.length / 2);
+    const interesesDelGrupo = [...cuenta.entries()]
+      .filter(([, n]) => n >= minimo)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([nombre, n]) => ({ nombre, cuantos: n }));
+
+    res.json({
+      ...rows[0],
+      miembros: publicos,
+      intereses_del_grupo: interesesDelGrupo,
+      faltan: Math.max(0, rows[0].tamano_max - miembros.length),
+    });
   } catch (err) {
     next(err);
   }
@@ -218,16 +311,107 @@ router.get('/yo/eventos', async (req, res, next) => {
   }
 });
 
+// GET /api/usuarios/yo/eventos/:id/local — el sitio al que vas.
+//
+// La app mostraba del plan el título, la fecha, la dirección y el precio, y
+// nada más: un local sin carta, sin horario y sin saber qué te encuentras al
+// llegar es una línea de texto, no un sitio. Todo eso ya existía —lo publica el
+// propio comercio desde su app— y no había forma de que llegara acá.
+//
+// El id del evento SÍ es un parámetro, a diferencia del resto de este router,
+// así que la autorización se comprueba a mano: se exige que quien pregunta
+// pertenezca al grupo de ese evento. Sin esa condición, cambiar el id en la
+// URL sería un recorrido por la carta de cualquier local con evento asignado.
+// Responde 404 y no 403 cuando no te toca: distinguirlos confirmaría que el
+// evento existe.
+router.get('/yo/eventos/:id/local', async (req, res, next) => {
+  try {
+    const { rows: evento } = await db.query(
+      `SELECT e.id, e.comercio_id, e.anfitrion_id, e.fecha_hora, e.titulo
+         FROM eventos e
+         JOIN grupo_miembros gm ON gm.grupo_id = e.grupo_id
+        WHERE e.id = $1 AND gm.usuario_id = $2 AND e.deleted_at IS NULL`,
+      [req.params.id, req.usuarioId]
+    );
+    if (!evento[0]) return res.status(404).json({ error: 'Evento no encontrado.' });
+
+    const comercioId = evento[0].comercio_id;
+
+    const [comercio, anfitrion, propuesta, filas] = await Promise.all([
+      db.query('SELECT * FROM v_comercio_publico WHERE id = $1', [comercioId]),
+      db.query(
+        'SELECT nombre, bio, foto_url FROM anfitriones WHERE id = $1 AND deleted_at IS NULL',
+        [evento[0].anfitrion_id]
+      ),
+      db.query('SELECT * FROM v_propuesta_publica WHERE comercio_id = $1 LIMIT 1', [comercioId]),
+      db.query(
+        `SELECT * FROM v_menu_publico WHERE comercio_id = $1
+          ORDER BY menu_orden, seccion_orden, item_orden`,
+        [comercioId]
+      ),
+    ]);
+
+    // La vista viene plana (una fila por plato) porque Postgres no devuelve
+    // árboles; el anidado se arma acá, que es quien sabe qué forma necesita la
+    // pantalla. Las filas sin sección o sin ítem existen —el LEFT JOIN deja
+    // pasar un menú publicado todavía vacío— y se descartan al anidar en vez
+    // de filtrarlas en SQL, para que un menú sin platos no desaparezca sino
+    // que aparezca vacío.
+    const menus = [];
+    const porMenu = new Map();
+    const porSeccion = new Map();
+    for (const f of filas.rows) {
+      let menu = porMenu.get(f.menu_id);
+      if (!menu) {
+        menu = { id: f.menu_id, nombre: f.menu_nombre, descripcion: f.menu_descripcion, secciones: [] };
+        porMenu.set(f.menu_id, menu);
+        menus.push(menu);
+      }
+      if (!f.seccion_id) continue;
+      let seccion = porSeccion.get(f.seccion_id);
+      if (!seccion) {
+        seccion = { id: f.seccion_id, nombre: f.seccion_nombre, descripcion: f.seccion_descripcion, items: [] };
+        porSeccion.set(f.seccion_id, seccion);
+        menu.secciones.push(seccion);
+      }
+      if (!f.item_id) continue;
+      seccion.items.push({
+        id: f.item_id,
+        nombre: f.item_nombre,
+        descripcion: f.item_descripcion,
+        precio: f.item_precio,
+      });
+    }
+
+    res.json({
+      evento: { id: evento[0].id, titulo: evento[0].titulo, fecha_hora: evento[0].fecha_hora },
+      comercio: comercio.rows[0] || null,
+      anfitrion: anfitrion.rows[0] || null,
+      propuesta: propuesta.rows[0] || null,
+      menus,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // --- Test de personalidad ---
 
 // POST /api/usuarios/yo/test-personalidad — registra un nuevo test como vigente
 router.post('/yo/test-personalidad', async (req, res, next) => {
   const client = await db.pool.connect();
   try {
-    const { respuestas, resultado, version_test } = req.body;
+    const { respuestas, version_test } = req.body;
     if (!respuestas) {
       return res.status(400).json({ error: 'respuestas es obligatorio.' });
     }
+
+    // El resultado se calcula acá y no se acepta del cliente, aunque el cuerpo
+    // traiga uno. Es lo que se le muestra a la persona como su perfil y lo que
+    // explica con qué criterio se la agrupa: si lo mandara el cliente, sería un
+    // campo que cualquiera puede escribir llamando a la API, y dejaría de
+    // significar nada. La app, de hecho, venía mandando `null`.
+    const resultado = perfilPersonalidad.construir(respuestas);
 
     await client.query('BEGIN');
     // El test anterior deja de ser vigente para respetar el índice único
@@ -240,7 +424,7 @@ router.post('/yo/test-personalidad', async (req, res, next) => {
       `INSERT INTO tests_personalidad (usuario_id, respuestas, resultado, version_test, vigente)
        VALUES ($1, $2, $3, COALESCE($4, 1), TRUE)
        RETURNING *`,
-      [req.usuarioId, respuestas, resultado || null, version_test]
+      [req.usuarioId, respuestas, resultado, version_test]
     );
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
@@ -257,6 +441,37 @@ router.post('/yo/test-personalidad', async (req, res, next) => {
     next(err);
   } finally {
     client.release();
+  }
+});
+
+// GET /api/usuarios/yo/perfil-personalidad — el perfil vigente.
+//
+// Existe porque la app pedía 20 preguntas y no devolvía nada a cambio: la
+// columna `resultado` se guardaba siempre NULL y no había ninguna pantalla que
+// le contara a la persona qué se dedujo de sus respuestas. Devuelve 204 si
+// todavía no hizo el test, que es un estado normal y no un error.
+//
+// Recalcula el perfil al vuelo cuando la fila guardada no lo tiene: los tests
+// contestados antes de que esto existiera se quedaron con `resultado` NULL, y
+// obligar a esas personas a repetir 20 preguntas para ver su perfil sería
+// cobrarles el haber llegado temprano.
+router.get('/yo/perfil-personalidad', async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT respuestas, resultado, created_at
+         FROM tests_personalidad
+        WHERE usuario_id = $1 AND vigente`,
+      [req.usuarioId]
+    );
+    if (!rows[0]) return res.status(204).send();
+
+    const fila = rows[0];
+    const perfil = fila.resultado || perfilPersonalidad.construir(fila.respuestas);
+    if (!perfil) return res.status(204).send();
+
+    res.json({ ...perfil, respondido_el: fila.created_at });
+  } catch (err) {
+    next(err);
   }
 });
 

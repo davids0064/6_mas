@@ -142,6 +142,17 @@ function proximoPlan(eventos) {
 //
 // El más reciente y no el más viejo: se pregunta por lo que se tiene fresco.
 // Un cancelado no se valora — no hubo nada que juzgar. `ya_valorado` lo
+// Los planes que ya ocurrieron, del más reciente al más viejo. Son el
+// historial de la persona: antes se pedían todos los eventos y se pintaba solo
+// el próximo, así que todo lo vivido se descartaba en el cliente.
+function planesPasados(eventos) {
+  if (!Array.isArray(eventos)) return [];
+  const ahora = Date.now();
+  return eventos
+    .filter((e) => e.estado !== 'cancelado' && new Date(e.fecha_hora).getTime() < ahora)
+    .sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora));
+}
+
 // resuelve el backend por usuario, no por evento: que un compañero de grupo
 // haya opinado no significa que esta persona ya lo hizo.
 function planPorValorar(eventos) {
@@ -195,11 +206,13 @@ function TarjetaPlan({ evento }) {
   );
 }
 
-export default function GruposScreen({ onValorar }) {
+export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPerfil }) {
   const [grupo, setGrupo] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [evento, setEvento] = useState(null);
   const [porValorar, setPorValorar] = useState(null);
+  const [personalidad, setPersonalidad] = useState(null);
+  const [pasados, setPasados] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   // Ya no recibe ids por params. Antes esperaba un `grupoId` que App.js nunca
@@ -210,10 +223,13 @@ export default function GruposScreen({ onValorar }) {
     try {
       // En paralelo: son consultas independientes y la pantalla necesita las
       // tres para pintarse.
-      const [miGrupo, miPerfil, misEventos] = await Promise.all([
+      const [miGrupo, miPerfil, misEventos, miPersonalidad] = await Promise.all([
         api.obtenerMiGrupo(),
         api.obtenerMiPerfil(),
         api.obtenerMisEventos(),
+        // Se pide con catch propio: que el perfil falle no debe dejar sin
+        // pantalla a quien sí tiene grupo y plan.
+        api.obtenerMiPerfilPersonalidad().catch(() => null),
       ]);
       // obtenerMiGrupo devuelve null (204) mientras el matching todavía no
       // completó los 6: es el estado de espera, no un error.
@@ -221,6 +237,8 @@ export default function GruposScreen({ onValorar }) {
       setUsuario(miPerfil);
       setEvento(proximoPlan(misEventos));
       setPorValorar(planPorValorar(misEventos));
+      setPersonalidad(miPersonalidad);
+      setPasados(planesPasados(misEventos));
     } catch {
       // Sin datos no se bloquea la pantalla: se muestra el estado de espera.
     } finally {
@@ -237,7 +255,7 @@ export default function GruposScreen({ onValorar }) {
   return (
     <View style={styles.pantalla}>
       {/* Encabezado de marca: mismo estilo (logo centrado) en toda la app. */}
-      <EncabezadoMarca titulo="Tu grupo" />
+      <EncabezadoMarca titulo="Tu grupo" onCuenta={onCuenta} />
 
       {cargando ? (
         <ActivityIndicator color={COLORES.rojoMarca} style={styles.centrado} />
@@ -272,6 +290,15 @@ export default function GruposScreen({ onValorar }) {
                 <>
                   <Text style={styles.titulo}>¡Ya tienes plan! 🎉</Text>
                   <TarjetaPlan evento={evento} />
+                  {onVerLocal ? (
+                    <TouchableOpacity
+                      style={styles.botonLocal}
+                      onPress={() => onVerLocal(evento)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.botonLocalTexto}>Ver el sitio y la carta →</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -288,24 +315,106 @@ export default function GruposScreen({ onValorar }) {
                 </>
               )}
 
+              {/* Lo que comparte el grupo: es la respuesta a "¿y por qué
+                  estos cinco?", que es la primera pregunta de cualquiera. */}
+              {grupo.intereses_del_grupo?.length ? (
+                <View style={styles.chipsGrupo}>
+                  {grupo.intereses_del_grupo.map((i) => (
+                    <View key={i.nombre} style={styles.chip}>
+                      <Text style={styles.chipTexto}>
+                        {i.nombre} · {i.cuantos} de {grupo.miembros.length}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
               <Text style={styles.tituloMiembros}>Tu grupo</Text>
+              {/* Antes acá había seis nombres sueltos, uno debajo del otro: el
+                  grupo se presentaba como una lista de desconocidos, que es
+                  justo lo que la app tendría que estar deshaciendo. Ahora cada
+                  persona viene con lo que comparte contigo, que es con lo que
+                  se rompe el hielo en una mesa. */}
               {grupo.miembros?.map((m) => (
-                <Text key={m.id} style={styles.miembro}>
-                  {m.nombre}
-                </Text>
+                <View key={m.id} style={styles.miembroFila}>
+                  <View style={styles.miembroTexto}>
+                    <Text style={styles.miembro}>
+                      {m.nombre}
+                      {m.es_tu_perfil ? <Text style={styles.miembroTu}>  · tú</Text> : null}
+                    </Text>
+                    {m.intereses_comunes?.length ? (
+                      <Text style={styles.miembroComun}>
+                        También le gusta {m.intereses_comunes.join(' y ')}
+                      </Text>
+                    ) : m.es_tu_perfil ? null : (
+                      <Text style={styles.miembroComun}>Nada en común todavía: pregúntale</Text>
+                    )}
+                  </View>
+                </View>
               ))}
+
+              {onVerPerfil ? (
+                <TouchableOpacity
+                  style={styles.botonPerfil}
+                  onPress={onVerPerfil}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.botonPerfilTexto}>
+                    {personalidad ? `Tu perfil: ${personalidad.titulo} →` : 'Ver tu perfil →'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
 
               <TouchableOpacity style={styles.botonActualizar} onPress={cargar} activeOpacity={0.8}>
                 <Text style={styles.botonActualizarTexto}>Actualizar ↻</Text>
               </TouchableOpacity>
             </Animated.View>
           ) : (
+            // Estado de espera. Era la pantalla más pobre de la app: un
+            // título, una frase y un botón de recargar. Es también la primera
+            // que ve cualquiera que se registre, así que se le da algo que
+            // mirar mientras espera: su perfil, qué falta exactamente, y lo
+            // que ya vivió si vuelve a estar en espera después de un plan.
             <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.bloqueTexto}>
-              <Text style={styles.titulo}>Estamos formando tu grupo ideal ✨</Text>
-              <Text style={styles.subtitulo}>
-                {usuario ? `${usuario.nombre.split(' ')[0]}, ya` : 'Ya'} ocupas tu puesto. Cuando los
-                6 estén listos te avisaremos para el plan sorpresa.
+              <Text style={styles.titulo}>
+                {pasados.length ? 'Buscándote un grupo nuevo ✨' : 'Estamos formando tu grupo ideal ✨'}
               </Text>
+              <Text style={styles.subtitulo}>
+                {usuario ? `${usuario.nombre.split(' ')[0]}, ya` : 'Ya'} ocupas tu puesto. Formamos
+                el grupo cuando haya seis personas afines en tu ciudad, y entonces te damos el
+                plan ya resuelto: sitio, día y hora.
+              </Text>
+
+              {personalidad ? (
+                <TouchableOpacity
+                  style={styles.tarjetaPerfil}
+                  onPress={onVerPerfil}
+                  activeOpacity={0.85}
+                  disabled={!onVerPerfil}
+                >
+                  <Text style={styles.perfilEtiqueta}>TU PERFIL</Text>
+                  <Text style={styles.perfilTitulo}>{personalidad.titulo}</Text>
+                  <Text style={styles.perfilResumen} numberOfLines={3}>
+                    {personalidad.resumen}
+                  </Text>
+                  {onVerPerfil ? <Text style={styles.perfilEnlace}>Ver el detalle →</Text> : null}
+                </TouchableOpacity>
+              ) : null}
+
+              {pasados.length ? (
+                <View style={styles.historial}>
+                  <Text style={styles.tituloMiembros}>Lo que ya viviste</Text>
+                  {pasados.map((e) => (
+                    <View key={e.id} style={styles.historialFila}>
+                      <Text style={styles.historialTitulo}>{e.titulo}</Text>
+                      <Text style={styles.historialDato}>
+                        {formatearFecha(e.fecha_hora)}
+                        {e.comercio_nombre ? ` · ${e.comercio_nombre}` : ''}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
 
               <TouchableOpacity style={styles.botonActualizar} onPress={cargar} activeOpacity={0.8}>
                 <Text style={styles.botonActualizarTexto}>Actualizar ↻</Text>
@@ -363,6 +472,77 @@ const styles = StyleSheet.create({
   centroConteo: { ...TIPOGRAFIA.titulo, fontSize: 34, color: COLORES.rojoMarca },
   centroConteoTotal: { fontSize: 20, color: COLORES.textoTenue },
   bloqueTexto: { alignItems: 'center', marginTop: ESPACIADO.xl, paddingHorizontal: ESPACIADO.m },
+  chipsGrupo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: ESPACIADO.m,
+  },
+  chip: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.chip,
+    paddingVertical: 6,
+    paddingHorizontal: ESPACIADO.m,
+    margin: ESPACIADO.xs,
+  },
+  chipTexto: { ...TIPOGRAFIA.ayuda, color: COLORES.texto, fontWeight: '600' },
+  miembroFila: { alignSelf: 'stretch', paddingVertical: ESPACIADO.s },
+  miembroTexto: { alignItems: 'center' },
+  miembroTu: { ...TIPOGRAFIA.ayuda, color: COLORES.rojoMarca, fontWeight: '700' },
+  miembroComun: { ...TIPOGRAFIA.ayuda, color: COLORES.textoSuave, marginTop: 2 },
+  botonLocal: {
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.boton,
+    paddingVertical: 12,
+    paddingHorizontal: ESPACIADO.l,
+    marginTop: ESPACIADO.m,
+  },
+  botonLocalTexto: { ...TIPOGRAFIA.etiqueta, color: COLORES.texto },
+  botonPerfil: {
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.boton,
+    paddingVertical: 12,
+    paddingHorizontal: ESPACIADO.l,
+    marginTop: ESPACIADO.m,
+  },
+  botonPerfilTexto: { ...TIPOGRAFIA.etiqueta, color: COLORES.texto },
+  tarjetaPerfil: {
+    alignSelf: 'stretch',
+    backgroundColor: COLORES.negroMarca,
+    borderRadius: RADIOS.tarjeta,
+    padding: ESPACIADO.l,
+    marginTop: ESPACIADO.l,
+  },
+  perfilEtiqueta: {
+    ...TIPOGRAFIA.ayuda,
+    color: COLORES.blanco,
+    opacity: 0.6,
+    letterSpacing: 2,
+  },
+  perfilTitulo: { ...TIPOGRAFIA.titulo, fontSize: 22, color: COLORES.blanco, marginTop: ESPACIADO.xs },
+  perfilResumen: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.blanco,
+    opacity: 0.85,
+    marginTop: ESPACIADO.s,
+    lineHeight: 21,
+  },
+  perfilEnlace: {
+    ...TIPOGRAFIA.etiqueta,
+    color: COLORES.blanco,
+    marginTop: ESPACIADO.m,
+    textDecorationLine: 'underline',
+  },
+  historial: { alignSelf: 'stretch', marginTop: ESPACIADO.l },
+  historialFila: {
+    paddingVertical: ESPACIADO.s,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORES.borde,
+  },
+  historialTitulo: { ...TIPOGRAFIA.etiqueta, color: COLORES.texto },
+  historialDato: { ...TIPOGRAFIA.ayuda, color: COLORES.textoSuave, marginTop: 2 },
   titulo: { ...TIPOGRAFIA.titulo, fontSize: 22, color: COLORES.texto, textAlign: 'center' },
   subtitulo: {
     ...TIPOGRAFIA.subtitulo,
