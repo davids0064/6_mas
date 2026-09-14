@@ -82,4 +82,35 @@ class ComercioController
 
         Response::json($comercio);
     }
+
+    /**
+     * DELETE /mi-comercio — el comercio da de baja su propia cuenta.
+     *
+     * Existe porque la App Store lo exige (guideline 5.1.1(v)): toda app que
+     * deje crear una cuenta tiene que dejar borrarla desde dentro, y la app de
+     * comercios permite registrarse. Mandar al dueño de un local a escribir un
+     * correo de soporte para darse de baja es rechazo directo.
+     *
+     * Es soft delete, igual que en el resto del esquema: `deleted_at` saca al
+     * comercio del login (el índice único de email es parcial sobre
+     * deleted_at IS NULL, así que ese correo vuelve a quedar libre) y de las
+     * consultas del matching. Los eventos ya ocurridos se conservan: son parte
+     * del histórico de las personas que asistieron, y borrarlos falsearía las
+     * valoraciones que esas personas dejaron.
+     */
+    public function eliminar(): void
+    {
+        $comercio = Db::uno(
+            'UPDATE comercios SET deleted_at = now()
+             WHERE id = :id AND deleted_at IS NULL
+             RETURNING id',
+            ['id' => Auth::comercioId()]
+        );
+
+        if ($comercio === null) {
+            Response::error('Comercio no encontrado.', 404);
+        }
+
+        Response::sinContenido();
+    }
 }

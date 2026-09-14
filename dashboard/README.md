@@ -6,6 +6,28 @@ definen a su anfitrión y gestionan los eventos en los que reciben grupos.
 - **`api/`** — servicios REST en PHP puro + PDO sobre la misma base PostgreSQL que usa el móvil.
 - **`web/`** — SPA en Angular 21 que consume esos servicios.
 
+> ### ⚠️ El panel web se retira: lo reemplaza una app
+>
+> La superficie de los comercios pasa a ser **`comercios-movil/`**, una app de React
+> Native que consume esta misma API (`api/`). No conviven: la app sustituye al panel.
+> La API **no** se retira — es la que usa la app, y por tanto sigue siendo el servicio
+> que hay que desplegar.
+>
+> **El panel ya está portado entero.** La app cubre resumen, eventos (incluidos crear a
+> mano y cancelar), asistentes, planes, disponibilidad, anfitriones, propuestas de
+> bienvenida, menús con su editor de secciones y platos, perfil del comercio y alta y baja
+> de la cuenta. Todas las rutas `/panel/**` de `web/` tienen ya su equivalente en
+> `comercios-movil/` y se pueden borrar.
+>
+> Lo que queda en pie es la **parte pública**: `/` (la página donde un comercio conoce Seis
+> Más), `/entrar` y `/registro`. Eso es un sitio web y no puede ser una pantalla de la app
+> — es cómo llega alguien que todavía no la tiene instalada. Decidir qué pasa con esas tres
+> rutas es lo único que separa a `web/` de desaparecer.
+>
+> Nada de esto afecta a `api/`: es el backend de la app y sigue siendo el servicio a
+> desplegar. Ver `comercios-movil/README.md`.
+
+
 ---
 
 ## Arquitectura
@@ -179,6 +201,40 @@ railway up ./dashboard/api --path-as-root --service dashboard-api
 
 `railway.json` fija el builder en `DOCKERFILE` y pone el healthcheck en `/health`, así que un
 despliegue que arranque pero no responda no se marca como bueno.
+
+**Ya está desplegada**, en `https://dashboard-api-production-c666.up.railway.app` (servicio
+`dashboard-api` del proyecto `seis-mas`, junto a `api` y `Postgres`). Es la URL que
+`comercios-movil/src/config/env.js` usa en release. Variables del servicio, que no viven en el
+repo y se consultan con `railway variables --service dashboard-api --kv`:
+
+| Variable | Valor en producción |
+| --- | --- |
+| `DB_HOST` | `postgres.railway.internal` — red privada del proyecto, la base no está expuesta a internet |
+| `DB_NAME` | `railway` |
+| `DB_USER` | `seis_dashboard`, **no** el superusuario: la frontera entre contextos la sostiene Postgres |
+| `DB_SSLMODE` | `require` |
+| `CORS_ORIGENES` | `ninguno` — no hay ningún origen web autorizado todavía (ver abajo) |
+| `APP_DEBUG` | `false` |
+| `EMAIL_CONTACTO` | la dirección que aparece en los documentos legales |
+
+`CORS_ORIGENES` no puede quedar vacía: `config.php` sustituye el valor vacío por su valor por
+defecto, que es `http://localhost:4200`, y dejar autorizado un origen de desarrollo en producción
+es gratis de evitar. El valor `ninguno` no coincide con ningún `Origin` real, así que la API no
+emite cabeceras CORS para nadie — que es lo correcto mientras su único cliente sea la app nativa,
+que no manda `Origin`. Cuando se despliegue la web pública de registro, su dominio va ahí.
+
+#### El MPM de Apache
+
+El `Dockerfile` borra `mpm_event` de `mods-enabled` **en el `CMD`**, justo antes de arrancar
+Apache, y no solo en una capa del build. No es un adorno: la imagen `php:8.3-apache` trae
+habilitados `mpm_prefork` y `mpm_event` a la vez, y Apache se niega a arrancar con los dos
+(`AH00534: Configuration error: More than one MPM loaded`). El primer despliegue construyó bien y
+se quedó en bucle de reinicios por eso.
+
+Quitarlo durante el build no bastó, y el motivo está medido: el contenedor arrancaba con
+`mpm_event` de vuelta y con la fecha original de la imagen base, mientras los enlaces que sí había
+escrito el build llevaban la fecha del build. El `/etc/apache2` sobre el que corren las capas no es
+el que ve el contenedor. Hacerlo en el arranque no depende de capas ni de caché.
 
 Para probar la imagen antes de subirla:
 

@@ -1,0 +1,31 @@
+{
+  "name": "seis-mas-comercios",
+  "version": "0.1.0",
+  "description": "App de comercios de Seis Más (React Native CLI, sin Expo): resumen del día, eventos que recibe el local con sus asistentes, disponibilidad y perfil del comercio.",
+  "private": true,
+  "scripts": {
+    "start": "react-native start",
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "react": "18.2.0",
+    "react-native": "0.74.3",
+    "react-native-linear-gradient": "^2.8.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/runtime": "^7.24.0",
+    "@react-native/babel-preset": "0.74.85",
+    "@react-native/metro-config": "0.74.85",
+    "babel-jest": "^29.6.3",
+    "jest": "^29.6.3",
+    "prettier": "2.8.8",
+    "react-test-renderer": "18.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

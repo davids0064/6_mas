@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Opciones de `xcodebuild -exportArchive`. El archive se firma con un
+	     perfil de desarrollo; es aquí donde se aplica el de distribución.
+	     Mismo contenido que mobile/ios/ExportOptions.plist: las dos apps salen
+	     del mismo equipo y por el mismo camino. -->
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>58HG2PWM2S</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<!-- Subir los símbolos para que los crashes lleguen simbolizados. -->
+	<key>uploadSymbols</key>
+	<true/>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

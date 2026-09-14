@@ -35,6 +35,24 @@ RUN apt-get update \
 # mod_rewrite todas las rutas menos /index.php darían 404.
 RUN a2enmod rewrite
 
+# Exactamente un MPM, y que sea prefork.
+#
+# El primer despliegue en Railway construyó bien y luego no arrancó, en bucle:
+# "AH00534: apache2: Configuration error: More than one MPM loaded". La imagen
+# base trae habilitados los dos: mpm_prefork (el que php:apache necesita, porque
+# mod_php no es thread-safe) y mpm_event (el que habilita el paquete apache2 de
+# Debian por su cuenta). Apache no elige entre ellos: se niega a arrancar.
+#
+# Se hace con rm/ln y no con a2dismod a propósito. `a2dismod mpm_event` no
+# deshabilita nada en esta imagen —Debian protege el MPM— y devuelve un estado
+# que un `|| true` se traga, así que la corrección parecía aplicada en el build
+# y el contenedor seguía arrancando con los dos. Borrar el enlace no se puede
+# rechazar ni fallar en silencio.
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.* \
+          /etc/apache2/mods-enabled/mpm_worker.* \
+    && ln -sf ../mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -sf ../mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
+
 # Configuración de producción recomendada por la propia imagen: sin
 # display_errors, con opcache en modo producción. El detalle de los errores va
 # al log del contenedor (error_log), que es donde Railway lo muestra.
@@ -88,4 +106,18 @@ RUN chown -R root:root /var/www/html && chmod -R a-w,a+rX /var/www/html
 
 EXPOSE 8080
 
-CMD ["apache2-foreground"]
+
+# El MPM se normaliza aquí, en el arranque, y no solo en una capa del build.
+#
+# Motivo, medido y no supuesto: la imagen base trae habilitados mpm_prefork y
+# mpm_event a la vez, y Apache se niega a arrancar con los dos ("AH00534:
+# Configuration error: More than one MPM loaded"). Quitarlo en el build no
+# bastó — el contenedor arrancaba con mpm_event de vuelta, con la fecha
+# original de la imagen base, mientras los enlaces que sí escribió el build
+# llevaban la fecha del build. El `rm` de arriba se ejecuta sobre un
+# /etc/apache2 que no es el que ve el contenedor.
+#
+# Borrarlo justo antes de `exec` no depende de capas ni de caché de build: actúa
+# sobre el sistema de archivos con el que Apache va a arrancar. `exec` para que
+# Apache sea el PID 1 y reciba las señales de parada de Railway.
+CMD ["sh", "-c", "rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* && exec apache2-foreground"]

@@ -14,6 +14,7 @@ use SeisMas\Controllers\CatalogoController;
 use SeisMas\Controllers\ComercioController;
 use SeisMas\Controllers\DisponibilidadController;
 use SeisMas\Controllers\EventoController;
+use SeisMas\Controllers\LegalController;
 use SeisMas\Controllers\MenuController;
 use SeisMas\Controllers\PlanController;
 use SeisMas\Controllers\PropuestaController;
@@ -101,6 +102,7 @@ $resumen   = new ResumenController();
 $plan      = new PlanController();
 $franja    = new DisponibilidadController();
 $catalogo  = new CatalogoController();
+$legal     = new LegalController();
 
 // Sondeo de salud: sin autenticación, para que el hosting o Railway puedan
 // verificar que el proceso responde.
@@ -109,6 +111,13 @@ $router->get('/health', static fn () => Response::json(['status' => 'ok']));
 // --- Públicas ---
 $router->post('/auth/registro', static fn () => $auth->registro());
 $router->post('/auth/login',    static fn () => $auth->login());
+
+// Documentos legales. Públicos y sin token a propósito: Apple los abre desde
+// App Store Connect, sin sesión y sin haber instalado la app. Devuelven HTML,
+// no JSON, y son los únicos de esta API que lo hacen.
+$router->get('/privacidad',        static fn () => $legal->privacidad());
+$router->get('/terminos',          static fn () => $legal->terminos());
+$router->get('/legal/estilos.css', static fn () => $legal->estilos());
 
 // --- Protegidas ---
 // Auth::exigir() corta con 401 antes de tocar la base. Se llama en cada
@@ -123,6 +132,9 @@ $protegida = static fn (callable $accion): callable
 $router->get('/resumen',     $protegida(static fn () => $resumen->ver()));
 $router->get('/mi-comercio', $protegida(static fn () => $comercio->ver()));
 $router->put('/mi-comercio', $protegida(static fn () => $comercio->actualizar()));
+// Baja de la cuenta del propio comercio. Exigida por la App Store para poder
+// publicar la app de comercios (guideline 5.1.1(v)).
+$router->delete('/mi-comercio', $protegida(static fn () => $comercio->eliminar()));
 
 $router->get('/menus',         $protegida(static fn () => $menu->listar()));
 $router->post('/menus',        $protegida(static fn () => $menu->crear()));
