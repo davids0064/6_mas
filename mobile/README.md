@@ -1,9 +1,9 @@
 # Seis Más — App móvil (React Native CLI, sin Expo Go)
 
-Este directorio contiene la capa JS de la app (servicios, pantallas placeholder,
-configuración). Los archivos nativos de iOS/Android **no se generan a mano**:
-los crea el CLI de React Native. Esta guía documenta cómo generarlos y
-conectarlos con lo que ya vive aquí.
+Cliente móvil de Seis Más. Contiene la capa JS (pantallas, servicios,
+configuración) **y** los proyectos nativos de iOS y Android, ya generados y
+versionados: `ios/` compila tal cual con `pod install` + Xcode, no hay que
+crear nada con el CLI.
 
 Se eligió **React Native CLI en vez de Expo managed** porque el roadmap exige
 compilar directamente en Xcode con control total sobre `Info.plist`, firma y
@@ -11,21 +11,12 @@ capacidades nativas (necesario más adelante para push notifications,
 integraciones de pago con comercios, etc.) sin las restricciones del runtime
 gestionado de Expo.
 
-## 1. Generar el proyecto nativo
-
-Desde `mobile/`, o desde donde quieras crear el proyecto (luego se copian los
-archivos JS de este directorio dentro):
+## 1. Instalar dependencias
 
 ```bash
-npx @react-native-community/cli init SeisMas --directory app-nativa
+cd mobile
+npm install
 ```
-
-Esto crea `app-nativa/ios` y `app-nativa/android` con los proyectos nativos
-reales. Copia (o enlaza) el contenido de `mobile/src` dentro de
-`app-nativa/src`, y `mobile/index.js`/`App.js` como punto de entrada si
-decides fusionar ambos árboles en uno solo. La razón de mantenerlos separados
-en este repo es no versionar los artefactos generados por el CLI (que son
-voluminosos y regenerables) junto con el código fuente propio.
 
 ## 2. Instalar CocoaPods (dependencias nativas de iOS)
 
@@ -33,7 +24,7 @@ React Native usa CocoaPods para las dependencias nativas de iOS. Cada vez que
 se agregue una librería con módulos nativos hay que repetir este paso:
 
 ```bash
-cd app-nativa/ios
+cd ios
 pod install
 ```
 
@@ -51,25 +42,29 @@ que refleja correctamente las dependencias de CocoaPods; abrir el `.xcodeproj`
 directo compila sin los pods y falla en tiempo de enlace.
 
 ```bash
-open app-nativa/ios/SeisMas.xcworkspace
+open ios/SeisMas.xcworkspace
 ```
 
 ## 4. Configurar bundle identifier, signing team y target
 
 Dentro de Xcode:
 
-1. Selecciona el proyecto `SeisMas` en el navegador izquierdo → target `SeisMas`.
-2. Pestaña **General**:
-   - `Bundle Identifier`: usa notación inversa de dominio, ej.
-     `com.seismas.app` (ajusta al dominio real cuando exista).
-   - `Deployment Target`: la versión mínima de iOS que soportarás (ej. iOS 15).
-3. Pestaña **Signing & Capabilities**:
+El bundle identifier ya está fijado en el proyecto: **`com.seismas.app`**
+(y `com.seismas.app.tests` para el target de pruebas). Era
+`org.reactjs.native.example.…`, el de la plantilla de React Native, con el que
+no se puede crear el registro en App Store Connect.
+
+Lo único que queda y **no se puede dejar hecho en el repo** es el equipo de
+firma, porque depende de tu cuenta:
+
+1. Selecciona el proyecto `SeisMas` → target `SeisMas`.
+2. Pestaña **Signing & Capabilities**:
    - Activa "Automatically manage signing".
-   - Selecciona tu `Team` (cuenta de Apple Developer, personal o de la
-     organización). Sin esto, Xcode no puede compilar para dispositivo físico
-     ni generar el `.ipa` de distribución.
-4. Selecciona el esquema `SeisMas` y el destino (simulador o dispositivo
-   físico conectado) en la barra superior antes de compilar (⌘R).
+   - Selecciona tu `Team` (cuenta del Apple Developer Program). Sin esto Xcode
+     no compila para dispositivo físico ni genera el `.ipa` de distribución.
+   - Registra `com.seismas.app` como App ID en developer.apple.com si Xcode no
+     lo crea solo.
+3. Selecciona el esquema `SeisMas` y el destino antes de compilar (⌘R).
 
 ## 5. Conectar la app al backend
 
@@ -148,29 +143,105 @@ aislado a esa capa.
 
 ```
 mobile/
-  README.md
+  App.js                 # rutas del flujo (bienvenida → login → registro → test → grupos)
   src/
-    config/
-      env.js            # URLs de backend por entorno (release → Railway; debug → local)
+    config/env.js        # URLs de backend por entorno + enlaces legales
     services/
-      api.js             # Cliente HTTP centralizado hacia el backend
+      api.js             # cliente HTTP hacia el backend
+      sesion.js          # token y perfil, persistidos en AsyncStorage
     screens/
-      RegistroScreen.js          # placeholder: formulario de registro
-      TestPersonalidadScreen.js  # placeholder: cuestionario de personalidad
-      GruposScreen.js            # placeholder: estado del grupo de 6
+      WelcomeAnimationScreen.js
+      LoginScreen.js
+      RegistroScreen.js
+      TestPersonalidadScreen.js
+      GruposScreen.js
+      ValoracionScreen.js
+      CuentaScreen.js    # cerrar sesión y eliminar cuenta (exigido por la App Store)
+  __tests__/             # npm test
+  ios/ · android/        # proyectos nativos, versionados
 ```
 
 ## Correr la app
 
-Una vez generado el proyecto nativo (paso 1) y con el backend corriendo
+Con las dependencias instaladas (pasos 1 y 2) y el backend corriendo
 (`cd backend && npm run dev`):
 
 ```bash
 # Metro bundler
-cd app-nativa && npx react-native start
+cd mobile && npx react-native start
 
 # en otra terminal, para iOS
 npx react-native run-ios
 ```
 
 O directamente ⌘R desde Xcode con el `.xcworkspace` abierto.
+
+## Correr las pruebas
+
+```bash
+cd mobile && npm test
+```
+
+Cubren lo que no puede romperse sin que la app deje de ser publicable: el
+borrado de cuenta (`__tests__/CuentaScreen.test.js`), la persistencia de la
+sesión (`sesion.test.js`) y la interpretación de la fecha de nacimiento
+(`fechaNacimiento.test.js`).
+
+## Publicar en la App Store
+
+### Lo que ya está resuelto en el repo
+
+| | |
+| --- | --- |
+| Bundle identifier | `com.seismas.app` (era el de la plantilla de RN) |
+| Borrado de cuenta en la app | `CuentaScreen`, accesible desde "Cuenta" en Grupos — guideline 5.1.1(v) |
+| Cerrar sesión | misma pantalla |
+| Pantalla de arranque | logo de marca sobre negro (era "Powered by React Native") |
+| Manifiesto de privacidad | `ios/SeisMas/PrivacyInfo.xcprivacy` declara los 5 tipos de datos que la app recoge (declaraba cero) |
+| Purpose string de ubicación | eliminada: estaba vacía y la app no usa ubicación |
+| Orientación | solo retrato, que es para lo que está diseñado el flujo |
+| Nombre bajo el icono | "Seis Más" |
+| Export compliance | `ITSAppUsesNonExemptEncryption = false`, para no responderlo en cada subida |
+| Sesión persistente | AsyncStorage: ya no hay que iniciar sesión en cada arranque |
+| Mayoría de edad | validada en el backend, no solo en el formulario |
+| Icono 1024 | presente y sin canal alfa |
+| Política de privacidad y términos | publicados y enlazados desde *Cuenta*: los sirve el backend en `/privacidad` y `/terminos` (no hay sitio web; ver README raíz) |
+
+### Lo que falta y no puede hacerse desde el repo
+
+1. **Cuenta del Apple Developer Program** (99 USD/año) y, en Xcode,
+   Signing & Capabilities → tu `Team`. Sin esto no hay `.ipa`.
+2. **Registrar un dispositivo en el equipo de desarrollo.** Con firma
+   automática, `xcodebuild archive` necesita un perfil de *desarrollo* (el de
+   distribución se aplica al exportar el `.ipa`, no al archivar), y Apple no
+   emite uno para un equipo sin ningún dispositivo registrado: falla con
+   "Your team has no devices from which to generate a provisioning profile".
+   Se resuelve conectando un iPhone por USB una vez, o añadiendo su UDID en
+   developer.apple.com. La alternativa es pasar a firma manual con un perfil de
+   App Store creado a mano, que no necesita dispositivos.
+3. **Nutrition labels** en App Store Connect, que deben coincidir con
+   `PrivacyInfo.xcprivacy`: correo, nombre, teléfono, otros datos de contacto y
+   contenido del usuario; todo "vinculado al usuario", nada para tracking.
+4. **Pegar la cuenta demo en las notas de revisión.** La cuenta ya existe y
+   está sembrada en producción (`db/cuenta_demo_app_store.sql`); lo que no se
+   puede hacer desde el repo es escribirla en el formulario de App Store
+   Connect. Las credenciales y el texto de las notas están en
+   `docs/FICHA_APP_STORE.md`. **Volver a correr la siembra antes de cada
+   envío**: el plan del grupo es una fecha relativa a la corrida, y un plan que
+   ya pasó deja al revisor mirando un historial en vez de un plan.
+5. **Ficha de la tienda**: capturas 6.7" y 6.5", descripción, keywords,
+   categoría y clasificación por edad (17+ por ser encuentros entre personas).
+6. **Railway**: el plan gratuito duerme las instancias. Si la API no responde
+   durante la revisión, es rechazo por 2.1.
+
+### Lo que sigue pendiente como producto
+
+- **No hay recuperación de contraseña.** `LoginScreen` lo dice explícitamente:
+  el endpoint no existe. Necesita un proveedor de correo transaccional, así que
+  es trabajo de backend, no de configuración. Es riesgo de rechazo y, con
+  seguridad, soporte manual desde el primer usuario que olvide su clave.
+- **No hay reportar ni bloquear a otro miembro del grupo.** Hoy los comentarios
+  de las valoraciones son privados (solo los lee un admin), así que la
+  guideline 1.2 de contenido generado por usuarios no aplica en sentido
+  estricto. Pero una app que sienta a seis desconocidos en una mesa debería
+  ofrecer una salida a quien tenga un mal encuentro, y Apple lo pregunta.
