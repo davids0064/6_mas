@@ -4,10 +4,17 @@
 // validación visual inmediata (por campo, al perder foco y al enviar) y
 // animaciones suaves de entrada en cascada.
 //
-// Conecta con POST /api/usuarios (email, password, nombre, genero, telefono)
-// y guarda los intereses elegidos vía PUT /api/usuarios/:id/intereses. La
-// edad se valida en el cliente (mayoría de edad) — el backend almacena
-// fecha_nacimiento, que se capturará con precisión más adelante.
+// Conecta con POST /api/usuarios (email, password, nombre, fecha_nacimiento,
+// genero, telefono) y guarda los intereses elegidos vía
+// PUT /api/usuarios/yo/intereses.
+//
+// El campo de edad pedía un número de años y NO lo enviaba: el formulario
+// comprobaba la mayoría de edad y luego tiraba el dato, así que
+// `fecha_nacimiento` quedaba en NULL para todo el mundo. Ahora se pide la
+// fecha completa, que es la que el backend guarda y con la que vuelve a
+// validar la mayoría de edad — un cliente no es sitio para hacer cumplir un
+// requisito de edad, porque cualquiera puede llamar a la API sin pasar por
+// aquí.
 //
 // Los intereses y los géneros NO están hardcodeados: se cargan desde
 // GET /api/intereses y GET /api/generos, que leen las tablas paramétricas
@@ -37,12 +44,52 @@ import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
 // 2+ letras (rechaza "a@b", "a@b.", "a@b.c").
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
+// Fecha en DD/MM/AAAA → Date, o null si no es una fecha real. Se escribe a
+// mano en vez de usar un date picker nativo para no añadir otra dependencia
+// con módulo nativo al MVP; el teclado numérico y el autoformato con "/"
+// hacen que escribirla sea igual de rápido.
+//
+// La comprobación de que los componentes vuelven a salir iguales es lo que
+// descarta fechas que el constructor de Date acepta desbordando (31/02 se
+// convertiría en el 2 o 3 de marzo en vez de fallar).
+export function interpretarFecha(texto) {
+  const partes = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto);
+  if (!partes) return null;
+  const [, dia, mes, anio] = partes.map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
+  if (
+    fecha.getFullYear() !== anio ||
+    fecha.getMonth() !== mes - 1 ||
+    fecha.getDate() !== dia
+  ) {
+    return null;
+  }
+  return fecha > new Date() ? null : fecha;
+}
+
+function edadEnAnios(fecha) {
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - fecha.getFullYear();
+  const mes = hoy.getMonth() - fecha.getMonth();
+  if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) edad -= 1;
+  return edad;
+}
+
+// Se construye a mano y no con toISOString(): ese convierte a UTC, y una
+// fecha de nacimiento creada a medianoche local puede retroceder un día al
+// cruzar el meridiano. El cumpleaños de alguien no depende de husos horarios.
+export function aISO(fecha) {
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
+
 export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
   const [datos, setDatos] = useState({
     nombre: '',
     email: '',
     telefono: '',
-    edad: '',
+    fechaNacimiento: '',
     genero: null,
     intereses: [],
     password: '',
@@ -99,6 +146,17 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
   // debe vivir aquí.
   const cambiarNumerico = (campo) => (valor) => cambiar(campo)(valor.replace(/[^\d]/g, ''));
 
+  // Variante fecha: se teclean solo dígitos y las barras las pone la pantalla
+  // en las posiciones 2 y 4. Así el campo se escribe de un tirón con el
+  // teclado numérico, sin buscar el "/" ni poder colocarlo donde no va, y el
+  // valor guardado siempre tiene la forma DD/MM/AAAA que espera
+  // interpretarFecha.
+  const cambiarFecha = (valor) => {
+    const digitos = valor.replace(/[^\d]/g, '').slice(0, 8);
+    const partes = [digitos.slice(0, 2), digitos.slice(2, 4), digitos.slice(4, 8)];
+    cambiar('fechaNacimiento')(partes.filter((p) => p.length > 0).join('/'));
+  };
+
   // Variante email: los correos no llevan espacios y son insensibles a
   // mayúsculas — se sanean al teclear para que "Juan @Gmail" no llegue ni al
   // estado ni al backend.
@@ -119,10 +177,13 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
       case 'telefono':
         // Solo dígitos (cambiarNumerico ya filtra); 7 fijo o 10 celular.
         return /^\d{7,10}$/.test(valor) ? null : 'Ingresa un teléfono válido (solo números)';
-      case 'edad': {
-        const n = Number(valor);
-        if (!Number.isInteger(n)) return 'Ingresa tu edad en números';
-        return n >= 18 && n <= 99 ? null : 'Debes ser mayor de 18 años';
+      case 'fechaNacimiento': {
+        const fecha = interpretarFecha(valor);
+        if (!fecha) return 'Escribe la fecha como DD/MM/AAAA';
+        const edad = edadEnAnios(fecha);
+        if (edad < 18) return 'Debes ser mayor de 18 años';
+        if (edad > 99) return 'Revisa el año, parece incorrecto';
+        return null;
       }
       case 'genero':
         return valor ? null : 'Elige una opción';
@@ -178,6 +239,9 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
         nombre: datos.nombre.trim(),
         email: datos.email.trim(),
         password: datos.password,
+        // ISO (AAAA-MM-DD): el formato que espera la columna `date` de
+        // Postgres, sin ambigüedad de zona horaria ni de orden día/mes.
+        fecha_nacimiento: aISO(interpretarFecha(datos.fechaNacimiento)),
         genero: datos.genero,
         telefono: datos.telefono.trim(),
       });
@@ -241,14 +305,14 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
             maxLength={10}
           />
           <CampoTexto
-            etiqueta="Edad"
-            placeholder="Tu edad"
-            valor={datos.edad}
-            onCambiar={cambiarNumerico('edad')}
-            error={errores.edad}
+            etiqueta="Fecha de nacimiento"
+            placeholder="DD/MM/AAAA"
+            valor={datos.fechaNacimiento}
+            onCambiar={cambiarFecha}
+            error={errores.fechaNacimiento}
             retrasoEntrada={260}
             keyboardType="number-pad"
-            maxLength={2}
+            maxLength={10}
           />
           <SelectorDesplegable
             etiqueta="Género"

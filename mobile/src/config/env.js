@@ -47,6 +47,24 @@ export const API_BASE_URL = ES_PRODUCCION ? URL_PRODUCCION : urlDeDesarrollo();
 
 export const PLATAFORMA = Platform.OS;
 
+// --- Enlaces legales ---------------------------------------------------------
+//
+// La App Store exige una política de privacidad accesible por URL pública (y la
+// pide otra vez en App Store Connect, donde tiene que ser exactamente la misma).
+// Los términos de uso no son obligatorios en sentido estricto, pero una app que
+// junta desconocidos en persona sin reglas escritas es un problema legal antes
+// que un problema de revisión.
+//
+// Las sirve el propio backend (`backend/src/routes/legal.js`), no un sitio web:
+// no hay ninguno, el producto son dos apps. La API ya es un origen HTTPS
+// desplegado con certificado válido, que es exactamente lo que Apple pide.
+//
+// Se derivan de URL_PRODUCCION y no de API_BASE_URL a propósito: son las mismas
+// dos páginas públicas en cualquier build. Una build de debug que enlazara a
+// `localhost/privacidad` mostraría un enlace roto en el simulador.
+export const URL_POLITICA_PRIVACIDAD = `${URL_PRODUCCION}/privacidad`;
+export const URL_TERMINOS = `${URL_PRODUCCION}/terminos`;
+
 // Apuntar una build de debug al backend desplegado (para probar contra datos
 // reales sin compilar en release) es cambiar esta línea por
 // `export const API_BASE_URL = URL_PRODUCCION;` — a sabiendas de que entonces

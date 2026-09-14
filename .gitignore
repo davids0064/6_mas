@@ -15,10 +15,33 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# React Native (se generan al correr `npx @react-native-community/cli init`)
-mobile/ios/
-mobile/android/
+# React Native.
+#
+# Los proyectos nativos SÍ se versionan. Estaban ignorados enteros por ser
+# "generados por el CLI", pero dejaron de serlo en cuanto se editaron a mano:
+# el bundle identifier, la configuración de firma, la pantalla de arranque de
+# marca, el manifiesto de privacidad y los iconos viven ahí. Con `mobile/ios/`
+# ignorado, un clon limpio no puede compilar una build publicable — y peor, los
+# cambios que hacen la app aceptable para la App Store se pierden en silencio
+# al cambiar de máquina.
+#
+# Lo que sí se ignora es lo regenerable, que es voluminoso y se reconstruye con
+# `pod install` y con una compilación:
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/*.xcworkspace/xcuserdata/
+mobile/ios/**/xcuserdata/
+mobile/ios/.xcode.env.local
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/local.properties
 mobile/.expo/
+
+# comercios-movil/ NO aparece aquí a propósito: trae su propio .gitignore, el
+# que genera el CLI de React Native, y ya cubre Pods, build, xcuserdata y
+# node_modules. Duplicar esas reglas aquí es como acaban divergiendo. Las de
+# mobile/ sí viven en este archivo porque ese directorio no tiene el suyo.
 
 # Artefactos de build del dashboard (dashboard/web/.gitignore ya cubre dist/ y
 # node_modules; esto es la red de seguridad por si se compila desde otra ruta)

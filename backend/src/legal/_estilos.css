@@ -1,0 +1,56 @@
+/* Paleta de marca: negro, rojo y blanco. Sin dependencias externas: estas
+   páginas tienen que cargar aunque no haya CDN ni fuentes remotas. */
+:root {
+  --negro: #101010;
+  --rojo: #AD191A;
+  --blanco: #ffffff;
+  --gris: #5a5a5a;
+  --borde: #e4e4e4;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--blanco);
+  color: var(--negro);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+header {
+  background: var(--negro);
+  color: var(--blanco);
+  padding: 32px 24px;
+}
+header .marca {
+  color: var(--blanco);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+header .marca span { color: var(--rojo); }
+header p { color: #bdbdbd; margin: 6px 0 0; font-size: 14px; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 24px 72px; }
+h1 { font-size: 28px; line-height: 1.25; margin: 0 0 4px; }
+h2 {
+  font-size: 19px;
+  margin: 36px 0 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--borde);
+}
+h2:first-of-type { border-top: 0; padding-top: 0; }
+.actualizado { color: var(--gris); font-size: 14px; margin: 0 0 8px; }
+ul { padding-left: 20px; }
+li { margin: 6px 0; }
+a { color: var(--rojo); }
+code {
+  background: #f4f4f4;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 14px;
+}
+footer {
+  border-top: 1px solid var(--borde);
+  margin-top: 48px;
+  padding-top: 20px;
+  color: var(--gris);
+  font-size: 14px;
+}

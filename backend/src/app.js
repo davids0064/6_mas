@@ -12,13 +12,16 @@ const anfitrionesRouter = require('./routes/anfitriones');
 const eventosRouter = require('./routes/eventos');
 const feedbackRouter = require('./routes/feedback');
 const matchingRouter = require('./routes/matching');
+const legalRouter = require('./routes/legal');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
 // Cabeceras de seguridad por defecto (nosniff, frameguard, HSTS, etc.). La CSP
-// se desactiva porque esta API solo devuelve JSON: no sirve documentos HTML
-// donde una CSP tenga algo que proteger.
+// global se desactiva porque la API responde JSON, donde no hay nada que una
+// CSP proteja. Las dos únicas rutas que devuelven HTML (/privacidad y
+// /terminos) traen la suya propia, más estricta que cualquier default: ver
+// routes/legal.js.
 app.use(helmet({ contentSecurityPolicy: false }));
 
 // Railway y cualquier PaaS ponen un proxy delante. Sin esto req.ip es la IP
@@ -91,6 +94,12 @@ const limiteRegistro = limitador({
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// Documentos legales. Viven aquí y no en un sitio web porque no hay ninguno:
+// el producto son dos apps. La App Store exige una política de privacidad
+// accesible por URL pública, y esta API ya es un origen HTTPS desplegado con
+// certificado válido, así que sirve para eso sin infraestructura nueva.
+app.use(legalRouter);
 
 // Se aplican antes de montar el router para que corran sobre esas dos rutas
 // concretas y no sobre toda la API autenticada.

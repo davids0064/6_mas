@@ -18,10 +18,11 @@ contrato de la API ya no cambia cuando ocurra.
     schema.sql     # script SQL completo (PostgreSQL)
     migrations/    # cambios aditivos posteriores al schema inicial
   backend/         # API REST Node.js + Express + PostgreSQL (lado social)
-  mobile/          # capa JS de la app React Native (CLI, sin Expo)
-  dashboard/       # panel de comercios: API PHP + SPA Angular (lado comercial)
-    api/           # PHP sin framework, rol seis_dashboard
-    web/           # Angular standalone, desplegable en Hostinger
+  mobile/          # app React Native de usuarios (CLI, sin Expo)
+  comercios-movil/ # app React Native de comercios (CLI, sin Expo)
+  dashboard/       # lado comercial: API PHP + SPA Angular
+    api/           # PHP sin framework, rol seis_dashboard — la usan la web Y la app
+    web/           # Angular standalone; en retirada, la reemplaza comercios-movil/
   roadmap.png      # referencia de producto (no técnico)
 ```
 
@@ -38,7 +39,8 @@ flowchart LR
         A[App React Native\niOS via Xcode]
     end
     subgraph Comercios
-        D[SPA Angular\ndashboard/web]
+        D[App React Native\ncomercios-movil]
+        F[SPA Angular\ndashboard/web — en retirada]
     end
     subgraph Servidor
         B[Backend Express\n/api/* — rol seis_app]
@@ -47,6 +49,7 @@ flowchart LR
     end
     A -- "fetch JSON sobre HTTP" --> B
     D -- "fetch JSON sobre HTTP" --> E
+    F -- "fetch JSON sobre HTTP" --> E
     B -- "pg (SQL)" --> C
     E -- "PDO (SQL)" --> C
 ```
@@ -54,10 +57,17 @@ flowchart LR
 - La app móvil habla con el backend por HTTP/JSON (`mobile/src/services/api.js`).
 - El backend expone rutas REST por entidad y usa `pg` directo contra
   PostgreSQL (sin ORM, ver justificación en `backend/src/config/db.js`).
-- El dashboard de comercios habla con su propia API PHP (`dashboard/api`), que
-  usa PDO contra la misma base con **otro rol**. Las dos APIs se cruzan solo a
-  través de vistas (`v_comercio_publico`, `v_oferta_comercio`): ninguna lee las
-  tablas de la otra.
+- El lado de comercios habla con su propia API PHP (`dashboard/api`), que usa
+  PDO contra la misma base con **otro rol**. Las dos APIs se cruzan solo a
+  través de vistas (`v_comercio_publico`, `v_oferta_comercio`,
+  `v_evento_asistentes`): ninguna lee las tablas de la otra.
+- Hay **dos apps móviles y no una** por esa misma frontera: un solo binario con
+  las dos sesiones y las dos URLs sería el único punto del sistema donde los dos
+  contextos vuelven a tocarse. Además son dos productos para dos personas
+  distintas — quien busca plan y quien lo sirve.
+- `comercios-movil/` cubre la operación diaria del local. `dashboard/web` sigue
+  vivo solo para la configuración que aún no se ha portado (menús, propuestas,
+  anfitriones, planes); ver `comercios-movil/README.md`.
 - El esquema de base de datos (`db/schema.sql`) es la fuente de verdad de las
   reglas de integridad (tamaño de grupo, rating 1-5, unicidad de email, etc.),
   no solo la capa de aplicación.
@@ -350,13 +360,39 @@ lo que convierte a este repo en algo desplegable sin mover archivos.
 ### Variables del servicio `api`
 
 `DATABASE_URL`, `JWT_SECRET`, `JWT_TTL_SEGUNDOS`, `JWT_ISSUER`,
-`ADMIN_API_KEY` y `BCRYPT_SALT_ROUNDS` (12 en producción, 10 en local). Se
-consultan con `railway variables --service api --kv`.
+`ADMIN_API_KEY`, `BCRYPT_SALT_ROUNDS` (12 en producción, 10 en local) y
+`EMAIL_CONTACTO`. Se consultan con `railway variables --service api --kv`.
+
+`EMAIL_CONTACTO` es la dirección que aparece en los documentos legales (ver
+abajo). Va por variable y no escrita en el repo para poder cambiarla sin
+desplegar y para no dejar un correo personal fijado en el historial de git. Si
+falta, el backend arranca igual y las páginas se sirven sin enlace de contacto,
+avisando por consola: es un despliegue degradado, no roto — pero Apple exige esa
+dirección antes de enviar la app a revisión.
 
 `CORS_ORIGENES` **no está definida** a propósito: todavía no hay ningún cliente
 de navegador. La app móvil no la necesita (fetch nativo no aplica CORS). Cuando
 se despliegue el dashboard hay que agregar su dominio, o la SPA no va a poder
 hablar con su API.
+
+### Los documentos legales
+
+`GET /privacidad` y `GET /terminos` devuelven HTML, no JSON. Son las dos únicas
+rutas de la API que lo hacen, y viven aquí porque **no hay ningún sitio web**:
+el producto son dos apps. La App Store exige que la política de privacidad esté
+accesible en una URL pública, y esta API ya es un origen HTTPS con certificado
+válido, así que cumple el requisito sin infraestructura ni dominio nuevos.
+
+El contenido está en `backend/src/legal/*.html` y lo sirve
+`backend/src/routes/legal.js`, que sustituye la fecha de revisión y el correo de
+contacto al arrancar. La CSP global de helmet está desactivada porque el resto
+de la API solo devuelve JSON; estas dos rutas traen la suya, más estricta
+(`default-src 'none'`, sin scripts, sin recursos externos, sin iframes).
+
+La app móvil enlaza a estas URLs desde la pantalla *Cuenta*, derivándolas de
+`URL_PRODUCCION` en `mobile/src/config/env.js`. Mover el backend a otro dominio
+mueve también los documentos legales, y entonces hay que actualizar la URL en
+App Store Connect, donde tiene que coincidir exactamente.
 
 ### La base
 
