@@ -27,7 +27,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { api } from '../services/api';
 import EncabezadoMarca from '../components/EncabezadoMarca';
-import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
+import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
 // Una etiqueta por estrella: el número solo no dice qué significa un 3, y la
 // palabra hace que la escala se entienda igual entre personas distintas.
@@ -155,7 +155,8 @@ export default function ValoracionScreen({ evento, onListo, onVolver }) {
 
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
-  scroll: { flexGrow: 1, paddingBottom: ESPACIADO.xl },
+  scroll: {
+    ...COLUMNA, flexGrow: 1, paddingBottom: ESPACIADO.xl },
   cuerpo: { padding: ESPACIADO.l },
   plan: { ...TIPOGRAFIA.titulo, fontSize: 22, color: COLORES.texto, textAlign: 'center' },
   comercio: {

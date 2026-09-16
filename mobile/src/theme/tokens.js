@@ -70,3 +70,25 @@ export const RADIOS = {
   tarjeta: 20,
 };
 
+
+// Ancho máximo de la columna de contenido.
+//
+// Las tres revisiones de la App Store se hicieron en un iPad Air. Sin esto, en
+// una pantalla ancha la app se ve como un teléfono estirado: líneas de texto de
+// lado a lado, botones de 900 px y tarjetas vacías por dentro. Es exactamente
+// la impresión que un revisor resume como "no se siente como una app".
+//
+// 560 puntos es el ancho al que una línea de texto sigue siendo cómoda de
+// leer. En iPhone no cambia nada: ninguna pantalla llega a ese ancho, así que
+// el límite no llega a aplicarse nunca.
+export const ANCHO_MAXIMO = 560;
+
+// Se aplica al contenedor de contenido de cada pantalla (el
+// `contentContainerStyle` del ScrollView, o el `View` raíz donde no hay
+// scroll). `width: '100%'` es imprescindible: sin él, `alignSelf: 'center'`
+// encoge la columna al ancho de su hijo más ancho.
+export const COLUMNA = {
+  width: '100%',
+  maxWidth: ANCHO_MAXIMO,
+  alignSelf: 'center',
+};

@@ -14,7 +14,7 @@ import Animated, { FadeInDown, FadeInRight, useSharedValue, useAnimatedStyle, wi
 import { api } from '../services/api';
 import { sesion } from '../services/sesion';
 import EncabezadoMarca from '../components/EncabezadoMarca';
-import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
+import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
 // Cuestionario oficial del producto. Las respuestas viajan como jsonb
 // ({ id_pregunta: valor }), así que agregar/quitar preguntas aquí no
@@ -355,7 +355,8 @@ const styles = StyleSheet.create({
   },
   motivacion: { ...TIPOGRAFIA.ayuda, color: COLORES.textoTenue, marginTop: ESPACIADO.s },
   cuerpo: { flex: 1 },
-  cuerpoScroll: { padding: ESPACIADO.l, paddingTop: ESPACIADO.xl, paddingBottom: ESPACIADO.xl },
+  cuerpoScroll: {
+    ...COLUMNA, padding: ESPACIADO.l, paddingTop: ESPACIADO.xl, paddingBottom: ESPACIADO.xl },
   pregunta: { ...TIPOGRAFIA.titulo, color: COLORES.texto, marginBottom: ESPACIADO.l },
   opcion: {
     flexDirection: 'row',

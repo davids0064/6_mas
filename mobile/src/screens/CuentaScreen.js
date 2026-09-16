@@ -25,7 +25,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { api } from '../services/api';
 import { URL_POLITICA_PRIVACIDAD, URL_TERMINOS } from '../config/env';
 import EncabezadoMarca from '../components/EncabezadoMarca';
-import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
+import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
 export default function CuentaScreen({ onVolver, onSesionCerrada }) {
   const [usuario, setUsuario] = useState(null);
@@ -159,7 +159,8 @@ export default function CuentaScreen({ onVolver, onSesionCerrada }) {
 
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
-  cuerpo: { padding: ESPACIADO.l, paddingBottom: ESPACIADO.xl },
+  cuerpo: {
+    ...COLUMNA, padding: ESPACIADO.l, paddingBottom: ESPACIADO.xl },
   centrado: { marginTop: ESPACIADO.xl },
   tarjeta: {
     backgroundColor: COLORES.superficie,

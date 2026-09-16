@@ -27,7 +27,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import EncabezadoMarca from '../components/EncabezadoMarca';
 import { api } from '../services/api';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '../theme/tokens';
+import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, COLUMNA } from '../theme/tokens';
 
 // Los ejes se dibujan con dos decimales del backend. Un eje sostenido por una
 // sola pregunta se marca como tal en vez de presentarse como si fuera firme:
@@ -158,7 +158,8 @@ export default function PerfilScreen({ onVolver, onRehacerTest }) {
 const estilos = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
   centrado: { marginTop: ESPACIADO.xl },
-  cuerpo: { padding: ESPACIADO.m, paddingBottom: ESPACIADO.xl * 2 },
+  cuerpo: {
+    ...COLUMNA, padding: ESPACIADO.m, paddingBottom: ESPACIADO.xl * 2 },
   error: { color: COLORES.error, textAlign: 'center', marginBottom: ESPACIADO.m },
 
   vacio: { alignItems: 'center', marginTop: ESPACIADO.xl, paddingHorizontal: ESPACIADO.m },

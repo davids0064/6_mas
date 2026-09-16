@@ -38,7 +38,7 @@ import CampoTexto from '../components/form/CampoTexto';
 import SelectorDesplegable from '../components/form/SelectorDesplegable';
 import SelectorDesplegableMultiple from '../components/form/SelectorDesplegableMultiple';
 import EncabezadoMarca from '../components/EncabezadoMarca';
-import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
+import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
 // usuario@dominio.tld — exige al menos un punto en el dominio y un TLD de
 // 2+ letras (rechaza "a@b", "a@b.", "a@b.c").
@@ -378,7 +378,8 @@ export default function RegistroScreen({ navigation, onRegistrado, onVolver }) {
 
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
-  scroll: { paddingBottom: ESPACIADO.xl },
+  scroll: {
+    ...COLUMNA, paddingBottom: ESPACIADO.xl },
   formulario: { padding: ESPACIADO.l },
   errorGeneral: {
     ...TIPOGRAFIA.ayuda,

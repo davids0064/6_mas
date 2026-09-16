@@ -22,7 +22,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { api } from '../services/api';
 import CampoTexto from '../components/form/CampoTexto';
 import EncabezadoMarca from '../components/EncabezadoMarca';
-import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
+import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -162,7 +162,8 @@ export default function LoginScreen({ onLogin, onIrARegistro }) {
 
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
-  scroll: { paddingBottom: ESPACIADO.xl },
+  scroll: {
+    ...COLUMNA, paddingBottom: ESPACIADO.xl },
   formulario: { padding: ESPACIADO.l },
   enlaceRecuperar: {
     ...TIPOGRAFIA.etiqueta,

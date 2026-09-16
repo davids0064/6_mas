@@ -22,7 +22,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import EncabezadoMarca from '../components/EncabezadoMarca';
 import { api } from '../services/api';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '../theme/tokens';
+import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, COLUMNA } from '../theme/tokens';
 
 function formatearPrecio(valor) {
   const n = Number(valor);
@@ -188,7 +188,8 @@ export default function LocalScreen({ evento, onVolver }) {
 const estilos = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
   centrado: { marginTop: ESPACIADO.xl },
-  cuerpo: { padding: ESPACIADO.m, paddingBottom: ESPACIADO.xl * 2 },
+  cuerpo: {
+    ...COLUMNA, padding: ESPACIADO.m, paddingBottom: ESPACIADO.xl * 2 },
   error: { color: COLORES.error, textAlign: 'center', marginBottom: ESPACIADO.m },
   aviso: {
     ...TIPOGRAFIA.subtitulo,
