@@ -86,6 +86,29 @@ export const api = {
   // horario y cómo llegar. El backend comprueba que el evento sea tuyo.
   obtenerLocalDelPlan: (eventoId) => solicitud(`/api/usuarios/yo/eventos/${eventoId}/local`),
 
+  // --- Chat del grupo ---
+  // Devuelve [] si todavía no hay grupo (204 → null, normalizado acá para que
+  // la pantalla no tenga que distinguir "sin grupo" de "sin mensajes").
+  obtenerMensajes: async () => (await solicitud('/api/usuarios/yo/grupo/mensajes')) || [],
+  enviarMensaje: (texto) =>
+    solicitud('/api/usuarios/yo/grupo/mensajes', { method: 'POST', body: { texto } }),
+
+  // --- Asistencia ---
+  responderAsistencia: (asistencia) =>
+    solicitud('/api/usuarios/yo/grupo/asistencia', { method: 'PUT', body: { asistencia } }),
+
+  // --- Moderación (guideline 1.2) ---
+  // Las dos salidas que la App Store exige para contenido generado por
+  // usuarios. Bloquear no solo esconde los mensajes: el backend deja de poder
+  // sentar a esas dos personas en la misma mesa.
+  reportar: ({ mensajeId, usuarioId, motivo, detalle }) =>
+    solicitud('/api/usuarios/yo/reportes', {
+      method: 'POST',
+      body: { mensaje_id: mensajeId, usuario_id: usuarioId, motivo, detalle },
+    }),
+  bloquear: (usuarioId) =>
+    solicitud('/api/usuarios/yo/bloqueos', { method: 'POST', body: { usuario_id: usuarioId } }),
+
   // --- Test de personalidad ---
   // El `resultado` ya no viaja desde acá: lo calcula el backend con las
   // respuestas. Antes se mandaba `null` y se guardaba `null`, así que veinte

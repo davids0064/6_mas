@@ -31,6 +31,7 @@ import RegistroScreen from './src/screens/RegistroScreen';
 import TestPersonalidadScreen from './src/screens/TestPersonalidadScreen';
 import PerfilScreen from './src/screens/PerfilScreen';
 import LocalScreen from './src/screens/LocalScreen';
+import ChatScreen from './src/screens/ChatScreen';
 import GruposScreen from './src/screens/GruposScreen';
 import ValoracionScreen from './src/screens/ValoracionScreen';
 import CuentaScreen from './src/screens/CuentaScreen';
@@ -132,6 +133,9 @@ export default function App() {
       />
     );
   }
+  if (pantalla === 'chat') {
+    return <ChatScreen onVolver={() => setPantalla('grupos')} />;
+  }
   if (pantalla === 'grupos') {
     return (
       <GruposScreen
@@ -141,6 +145,7 @@ export default function App() {
         }}
         onCuenta={() => setPantalla('cuenta')}
         onVerPerfil={() => setPantalla('perfil')}
+        onAbrirChat={() => setPantalla('chat')}
         onVerLocal={(evento) => {
           setEventoDelLocal(evento);
           setPantalla('local');

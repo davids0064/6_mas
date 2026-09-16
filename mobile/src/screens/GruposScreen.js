@@ -27,7 +27,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { api } from '../services/api';
 import EncabezadoMarca from '../components/EncabezadoMarca';
-import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS } from '../theme/tokens';
+import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
 const TAMANO_PUESTO = 64;
 const RADIO_ANILLO = 110;
@@ -206,7 +206,7 @@ function TarjetaPlan({ evento }) {
   );
 }
 
-export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPerfil }) {
+export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPerfil, onAbrirChat }) {
   const [grupo, setGrupo] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [evento, setEvento] = useState(null);
@@ -249,6 +249,19 @@ export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPer
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  // Optimista: la respuesta se pinta antes de que el backend conteste, y si
+  // falla se recarga y vuelve a lo que la base diga. Decir "voy" y quedarse
+  // mirando un spinner es la forma más fácil de que alguien lo toque dos veces.
+  const responder = async (asistencia) => {
+    setGrupo((g) => (g ? { ...g, tu_asistencia: asistencia } : g));
+    try {
+      await api.responderAsistencia(asistencia);
+      await cargar();
+    } catch {
+      await cargar();
+    }
+  };
 
   const miembros = grupo?.miembros?.map((m) => m.nombre) || (usuario ? [usuario.nombre] : ['Tú']);
 
@@ -314,6 +327,62 @@ export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPer
                   </Text>
                 </>
               )}
+
+              {/* Decir si vas. Es lo primero que la app deja HACER, y lo que
+                  los otros cinco necesitan saber. Mientras no has contestado
+                  se muestran los dos botones; después, tu respuesta y la
+                  posibilidad de cambiarla. */}
+              {grupo.tu_asistencia === 'pendiente' ? (
+                <View style={styles.asistenciaPregunta}>
+                  <Text style={styles.asistenciaTitulo}>¿Vas a ir?</Text>
+                  <View style={styles.asistenciaBotones}>
+                    <TouchableOpacity
+                      style={styles.botonVoy}
+                      onPress={() => responder('confirmada')}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.botonVoyTexto}>Sí, voy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.botonNoVoy}
+                      onPress={() => responder('declinada')}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.botonNoVoyTexto}>No puedo</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.asistenciaDicha}
+                  onPress={() =>
+                    responder(grupo.tu_asistencia === 'confirmada' ? 'declinada' : 'confirmada')
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.asistenciaDichaTexto}>
+                    {grupo.tu_asistencia === 'confirmada' ? '✓ Dijiste que vas' : 'Dijiste que no puedes'}
+                    {'  ·  cambiar'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {grupo.asistencia ? (
+                <Text style={styles.asistenciaResumen}>
+                  {grupo.asistencia.confirmada} de {grupo.miembros.length} confirmados
+                  {grupo.asistencia.declinada ? ` · ${grupo.asistencia.declinada} no puede` : ''}
+                </Text>
+              ) : null}
+
+              {onAbrirChat ? (
+                <TouchableOpacity
+                  style={styles.botonChat}
+                  onPress={onAbrirChat}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.botonChatTexto}>Escribir al grupo 💬</Text>
+                </TouchableOpacity>
+              ) : null}
 
               {/* Lo que comparte el grupo: es la respuesta a "¿y por qué
                   estos cinco?", que es la primera pregunta de cualquiera. */}
@@ -430,7 +499,8 @@ export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPer
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: COLORES.fondo },
   centrado: { flex: 1, justifyContent: 'center' },
-  cuerpo: { alignItems: 'center', padding: ESPACIADO.l, paddingBottom: ESPACIADO.xl },
+  cuerpo: {
+    ...COLUMNA, alignItems: 'center', padding: ESPACIADO.l, paddingBottom: ESPACIADO.xl },
   anillo: {
     width: LADO_ANILLO,
     height: LADO_ANILLO,
@@ -508,6 +578,36 @@ const styles = StyleSheet.create({
     marginTop: ESPACIADO.m,
   },
   botonPerfilTexto: { ...TIPOGRAFIA.etiqueta, color: COLORES.texto },
+  asistenciaPregunta: { alignItems: 'center', marginTop: ESPACIADO.l },
+  asistenciaTitulo: { ...TIPOGRAFIA.etiqueta, fontSize: 17, color: COLORES.texto },
+  asistenciaBotones: { flexDirection: 'row', marginTop: ESPACIADO.s },
+  botonVoy: {
+    backgroundColor: COLORES.rojoMarca,
+    borderRadius: RADIOS.boton,
+    paddingVertical: 12,
+    paddingHorizontal: ESPACIADO.xl,
+    marginRight: ESPACIADO.s,
+  },
+  botonVoyTexto: { ...TIPOGRAFIA.boton, fontSize: 15, color: COLORES.blanco },
+  botonNoVoy: {
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.boton,
+    paddingVertical: 12,
+    paddingHorizontal: ESPACIADO.l,
+  },
+  botonNoVoyTexto: { ...TIPOGRAFIA.etiqueta, color: COLORES.textoSuave },
+  asistenciaDicha: { marginTop: ESPACIADO.m },
+  asistenciaDichaTexto: { ...TIPOGRAFIA.etiqueta, color: COLORES.rojoMarca },
+  asistenciaResumen: { ...TIPOGRAFIA.ayuda, color: COLORES.textoSuave, marginTop: ESPACIADO.xs },
+  botonChat: {
+    backgroundColor: COLORES.negroMarca,
+    borderRadius: RADIOS.boton,
+    paddingVertical: 14,
+    paddingHorizontal: ESPACIADO.xl,
+    marginTop: ESPACIADO.m,
+  },
+  botonChatTexto: { ...TIPOGRAFIA.boton, fontSize: 16, color: COLORES.blanco },
   tarjetaPerfil: {
     alignSelf: 'stretch',
     backgroundColor: COLORES.negroMarca,

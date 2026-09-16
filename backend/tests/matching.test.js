@@ -396,3 +396,64 @@ test('elegirEvento respeta el mínimo y desempata por fecha más cercana', () =>
   assert.equal(m.elegirEvento(agregados, [eventos[2]], { scoreMinimo: 0.5 }), null);
   assert.equal(m.elegirEvento(agregados, [], { scoreMinimo: 0 }), null);
 });
+
+// ============================================================================
+// Bloqueos: quién NO puede compartir mesa con quién.
+//
+// Apple exige poder bloquear a otro usuario (guideline 1.2). Si el bloqueo solo
+// escondiera los mensajes y el sistema volviera a sentar a esas dos personas
+// enfrente la semana siguiente, sería un adorno. Estas pruebas son las que
+// impiden que el bloqueo se quede en el chat.
+// ============================================================================
+
+const perfilDePrueba = (id) => ({
+  id,
+  nombre: id,
+  intereses: ['Gastronomía'],
+  respuestas: { localidad: 'pereira' },
+  esperando_desde: '2026-01-01',
+});
+
+const bloqueoEntre = (a, b) => new Set([`${a}|${b}`, `${b}|${a}`]);
+
+test('dos personas que se bloquearon no terminan en el mismo grupo', () => {
+  const siete = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(perfilDePrueba);
+  const { grupos } = m.formarGrupos(siete, { incompatibles: bloqueoEntre('a', 'b') });
+
+  assert.strictEqual(grupos.length, 1, 'con siete candidatos todavía sale un grupo');
+  const ids = grupos[0].miembros.map((m) => m.id);
+  assert.ok(!(ids.includes('a') && ids.includes('b')), `a y b juntos: ${ids.join(',')}`);
+});
+
+test('el bloqueo aplica aunque sea unilateral', () => {
+  // Solo A bloqueó a B. Que B no haya bloqueado a nadie no lo hace elegible
+  // para la mesa de A: el bloqueo lo declara uno y lo sufren los dos.
+  const siete = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(perfilDePrueba);
+  const soloUnSentido = new Set(['a|b', 'b|a']); // así lo arma cargarIncompatibles
+  const { grupos } = m.formarGrupos(siete, { incompatibles: soloUnSentido });
+  const ids = grupos[0].miembros.map((m) => m.id);
+  assert.ok(!(ids.includes('a') && ids.includes('b')));
+});
+
+test('si el bloqueo impide cerrar el grupo, nadie se queda sin volver al pool', () => {
+  // Seis candidatos justos y dos que no pueden coincidir: no hay grupo posible.
+  // Lo que NO puede pasar es que alguien desaparezca: un grupo a medias que se
+  // abandona sin devolver a su gente los dejaría fuera del emparejamiento sin
+  // que nadie se entere.
+  const seis = ['a', 'b', 'c', 'd', 'e', 'f'].map(perfilDePrueba);
+  const { grupos, sobrantes } = m.formarGrupos(seis, { incompatibles: bloqueoEntre('a', 'b') });
+
+  assert.strictEqual(grupos.length, 0);
+  assert.strictEqual(sobrantes.length, 6, 'los seis vuelven al pool');
+  assert.deepStrictEqual(
+    sobrantes.map((s) => s.id).sort(),
+    ['a', 'b', 'c', 'd', 'e', 'f'],
+    'y son exactamente los mismos seis'
+  );
+});
+
+test('sin bloqueos el resultado no cambia', () => {
+  const seis = ['a', 'b', 'c', 'd', 'e', 'f'].map(perfilDePrueba);
+  assert.strictEqual(m.formarGrupos(seis).grupos.length, 1);
+  assert.strictEqual(m.formarGrupos(seis, { incompatibles: new Set() }).grupos.length, 1);
+});

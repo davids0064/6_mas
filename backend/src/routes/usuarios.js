@@ -7,6 +7,7 @@ const matchingRunner = require('../services/matchingRunner');
 const matching = require('../services/matching');
 const { edadEnAnios, EDAD_MINIMA } = require('../services/edad');
 const perfilPersonalidad = require('../services/perfilPersonalidad');
+const moderacion = require('../services/moderacion');
 
 const router = express.Router();
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
@@ -188,7 +189,7 @@ router.get('/yo/grupo', async (req, res, next) => {
     // descartan antes de responder. Compartir mesa no da derecho a leer el test
     // de nadie.
     const { rows: miembros } = await db.query(
-      `SELECT u.id, u.nombre, gm.rol, gm.fecha_union,
+      `SELECT u.id, u.nombre, gm.rol, gm.fecha_union, gm.asistencia,
               t.respuestas,
               COALESCE(array_agg(i.nombre ORDER BY i.nombre)
                        FILTER (WHERE i.nombre IS NOT NULL), '{}') AS intereses
@@ -198,7 +199,7 @@ router.get('/yo/grupo', async (req, res, next) => {
          LEFT JOIN usuario_intereses ui ON ui.usuario_id = u.id
          LEFT JOIN pa_intereses i ON i.id = ui.interes_id AND i.activo
         WHERE gm.grupo_id = $1
-        GROUP BY u.id, u.nombre, gm.rol, gm.fecha_union, t.respuestas
+        GROUP BY u.id, u.nombre, gm.rol, gm.fecha_union, gm.asistencia, t.respuestas
         ORDER BY gm.fecha_union`,
       [rows[0].id]
     );
@@ -252,11 +253,19 @@ router.get('/yo/grupo', async (req, res, next) => {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([nombre, n]) => ({ nombre, cuantos: n }));
 
+    // El recuento va calculado acá y no en la app: es la pregunta que la
+    // pantalla hace siempre ("¿cuántos vamos?") y dejar que cada cliente la
+    // derive es garantizar que alguna versión la derive distinto.
+    const cuentaAsistencia = { confirmada: 0, declinada: 0, pendiente: 0 };
+    for (const m of miembros) cuentaAsistencia[m.asistencia] += 1;
+
     res.json({
       ...rows[0],
       miembros: publicos,
       intereses_del_grupo: interesesDelGrupo,
       faltan: Math.max(0, rows[0].tamano_max - miembros.length),
+      asistencia: cuentaAsistencia,
+      tu_asistencia: yo?.asistencia || 'pendiente',
     });
   } catch (err) {
     next(err);
@@ -306,6 +315,187 @@ router.get('/yo/eventos', async (req, res, next) => {
       [req.usuarioId]
     );
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Chat del grupo, asistencia y moderación ---
+//
+// La app dejaba leer y no dejaba hacer nada. Seis desconocidos quedaban a cenar
+// sin forma de decir "llego tarde" ni "no voy a poder ir", así que todo el
+// valor ocurría fuera de la app.
+//
+// Abrir un chat trae obligaciones (guideline 1.2): filtrar, reportar, bloquear
+// y atender los reportes. Las cuatro están acá; ninguna es opcional.
+
+/** El grupo vigente de quien pregunta, o null. Es la autorización del chat. */
+async function grupoDelUsuario(usuarioId) {
+  const { rows } = await db.query(
+    `SELECT g.id
+       FROM grupos g
+       JOIN grupo_miembros gm ON gm.grupo_id = g.id
+      WHERE gm.usuario_id = $1
+        AND g.deleted_at IS NULL
+        AND g.estado IN ('formando', 'completo', 'activo')
+      ORDER BY g.created_at DESC
+      LIMIT 1`,
+    [usuarioId]
+  );
+  return rows[0]?.id || null;
+}
+
+// GET /api/usuarios/yo/grupo/mensajes
+//
+// No recibe ningún id de grupo: sale del token, igual que el resto del router.
+// Un parámetro acá sería leer la conversación privada de seis desconocidos
+// cambiando un número en la URL.
+router.get('/yo/grupo/mensajes', async (req, res, next) => {
+  try {
+    const grupoId = await grupoDelUsuario(req.usuarioId);
+    if (!grupoId) return res.status(204).send();
+
+    // Se excluyen los mensajes ocultos por el filtro y los de quien el usuario
+    // haya bloqueado. El bloqueo se aplica en la consulta y no en el cliente:
+    // si viajaran y se escondieran al pintar, seguirían estando en la respuesta
+    // y el bloqueo sería decorativo.
+    const { rows } = await db.query(
+      `SELECT m.id, m.texto, m.created_at,
+              m.usuario_id,
+              (m.usuario_id = $1) AS es_tuyo,
+              split_part(u.nombre, ' ', 1) AS nombre
+         FROM mensajes_grupo m
+         JOIN usuarios u ON u.id = m.usuario_id
+        WHERE m.grupo_id = $2
+          AND m.deleted_at IS NULL
+          AND NOT m.oculto
+          AND NOT EXISTS (
+            SELECT 1 FROM bloqueos b
+             WHERE b.usuario_id = $1 AND b.bloqueado_id = m.usuario_id
+          )
+        ORDER BY m.created_at`,
+      [req.usuarioId, grupoId]
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/usuarios/yo/grupo/mensajes
+router.post('/yo/grupo/mensajes', async (req, res, next) => {
+  try {
+    const texto = String(req.body?.texto ?? '').trim();
+    if (!texto) return res.status(400).json({ error: 'El mensaje está vacío.' });
+    if (texto.length > 1000) {
+      return res.status(400).json({ error: 'El mensaje no puede pasar de 1000 caracteres.' });
+    }
+
+    const grupoId = await grupoDelUsuario(req.usuarioId);
+    if (!grupoId) return res.status(409).json({ error: 'Todavía no tienes grupo.' });
+
+    const { objetable } = moderacion.revisar(texto);
+
+    // El mensaje objetable se guarda marcado `oculto` en vez de rechazarse.
+    // Responder "mensaje rechazado" convierte el filtro en un campo de pruebas
+    // donde encontrar el hueco; así quien lo escribió no aprende qué palabra
+    // esquivar, y queda la evidencia para revisar la cuenta.
+    const { rows } = await db.query(
+      `INSERT INTO mensajes_grupo (grupo_id, usuario_id, texto, oculto)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, texto, created_at`,
+      [grupoId, req.usuarioId, texto, objetable]
+    );
+
+    res.status(201).json({ ...rows[0], es_tuyo: true, nombre: 'Tú' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/usuarios/yo/grupo/asistencia — "voy" / "no voy"
+//
+// 'pendiente' no se puede volver a poner a propósito: una vez que dijiste algo,
+// lo cambias a lo otro. "Dejar de haber contestado" no es un estado que le
+// sirva a los otros cinco, que lo que necesitan saber es cuántos van.
+router.put('/yo/grupo/asistencia', async (req, res, next) => {
+  try {
+    const { asistencia } = req.body || {};
+    if (!['confirmada', 'declinada'].includes(asistencia)) {
+      return res.status(400).json({ error: "asistencia tiene que ser 'confirmada' o 'declinada'." });
+    }
+    const grupoId = await grupoDelUsuario(req.usuarioId);
+    if (!grupoId) return res.status(409).json({ error: 'Todavía no tienes grupo.' });
+
+    const { rows } = await db.query(
+      `UPDATE grupo_miembros
+          SET asistencia = $1, asistencia_actualizada = now()
+        WHERE grupo_id = $2 AND usuario_id = $3
+        RETURNING asistencia, asistencia_actualizada`,
+      [asistencia, grupoId, req.usuarioId]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/usuarios/yo/bloqueos — bloquear a alguien
+//
+// Bloquear no solo silencia el chat: el matching deja de poder sentarlos en la
+// misma mesa (ver services/matchingRunner.js). Un bloqueo que te esconde los
+// mensajes y luego te sienta enfrente no sirve de nada.
+router.post('/yo/bloqueos', async (req, res, next) => {
+  try {
+    const { usuario_id: bloqueadoId } = req.body || {};
+    if (!bloqueadoId) return res.status(400).json({ error: 'usuario_id es obligatorio.' });
+    if (bloqueadoId === req.usuarioId) {
+      return res.status(400).json({ error: 'No puedes bloquearte a ti mismo.' });
+    }
+    await db.query(
+      `INSERT INTO bloqueos (usuario_id, bloqueado_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [req.usuarioId, bloqueadoId]
+    );
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/usuarios/yo/bloqueos/:id — deshacer un bloqueo
+router.delete('/yo/bloqueos/:id', async (req, res, next) => {
+  try {
+    await db.query('DELETE FROM bloqueos WHERE usuario_id = $1 AND bloqueado_id = $2', [
+      req.usuarioId,
+      req.params.id,
+    ]);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/usuarios/yo/reportes — reportar un mensaje o a una persona
+//
+// Se acepta siempre que apunte a algo. No se valida que el reportado sea del
+// grupo ni que el mensaje exista todavía: poner condiciones a quien está
+// reportando algo que le pasó es la forma más segura de que no lo reporte.
+router.post('/yo/reportes', async (req, res, next) => {
+  try {
+    const { mensaje_id: mensajeId, usuario_id: reportadoId, motivo, detalle } = req.body || {};
+    if (!mensajeId && !reportadoId) {
+      return res.status(400).json({ error: 'Hay que reportar un mensaje o a una persona.' });
+    }
+    if (!motivo) return res.status(400).json({ error: 'motivo es obligatorio.' });
+
+    const { rows } = await db.query(
+      `INSERT INTO reportes (reportante_id, mensaje_id, reportado_id, motivo, detalle)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, created_at`,
+      [req.usuarioId, mensajeId || null, reportadoId || null, String(motivo), detalle || null]
+    );
+    res.status(201).json(rows[0]);
   } catch (err) {
     next(err);
   }

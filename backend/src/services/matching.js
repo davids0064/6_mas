@@ -169,6 +169,14 @@ function formarGrupos(perfiles, opciones = {}) {
   const tamano = opciones.tamano || TAMANO_GRUPO;
   const agruparPorLocalidad = opciones.agruparPorLocalidad !== false;
 
+  // Pares que no pueden compartir mesa porque alguno bloqueó al otro. Llega
+  // como un Set de claves "idA|idB" con los dos sentidos ya escritos (lo arma
+  // matchingRunner). Bloquear a alguien y que el sistema te lo siente enfrente
+  // a la semana siguiente convertiría el bloqueo en un adorno.
+  const incompatibles = opciones.incompatibles || new Set();
+  const chocan = (a, b) => incompatibles.has(`${a.id}|${b.id}`);
+  const chocaConGrupo = (candidato, miembros) => miembros.some((m) => chocan(candidato, m));
+
   // Partición por localidad: cada bloque se resuelve por separado, así el
   // greedy nunca puede mezclar ciudades aunque la afinidad diera alta.
   const bloques = new Map();
@@ -190,10 +198,12 @@ function formarGrupos(perfiles, opciones = {}) {
     while (disponibles.length >= tamano) {
       const miembros = [disponibles.shift()];
 
+      let incompleto = false;
       while (miembros.length < tamano) {
-        let mejorIdx = 0;
+        let mejorIdx = -1;
         let mejorScore = -1;
         disponibles.forEach((candidato, idx) => {
+          if (chocaConGrupo(candidato, miembros)) return;
           const score = afinidadConGrupo(candidato, miembros);
           // Empate → gana el que lleva más esperando, porque `disponibles` ya
           // viene ordenado por antigüedad y solo se reemplaza con `>`.
@@ -202,7 +212,24 @@ function formarGrupos(perfiles, opciones = {}) {
             mejorIdx = idx;
           }
         });
+
+        // Puede no quedar nadie compatible: los que faltan bloquearon a alguien
+        // que ya está dentro. El grupo a medias se deshace y sus miembros
+        // vuelven al pool, en vez de cerrarse con menos de seis. Quien abrió el
+        // grupo vuelve al final de la cola para no reintentar la misma
+        // combinación imposible en la siguiente vuelta del while.
+        if (mejorIdx === -1) {
+          incompleto = true;
+          break;
+        }
         miembros.push(disponibles.splice(mejorIdx, 1)[0]);
+      }
+
+      if (incompleto) {
+        const semilla = miembros.shift();
+        disponibles.push(...miembros);
+        sobrantes.push(semilla);
+        continue;
       }
 
       grupos.push({

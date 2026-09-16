@@ -50,6 +50,25 @@ async function cargarCandidatos(cliente) {
 }
 
 /**
+ * Pares que no pueden compartir mesa porque alguno bloqueó al otro.
+ *
+ * Devuelve un Set con las dos direcciones escritas ("a|b" y "b|a") para que
+ * formarGrupos() pueda preguntar sin ordenar los ids ni pensar quién bloqueó a
+ * quién: el bloqueo es unilateral al declararlo y simétrico al aplicarlo — que
+ * A haya bloqueado a B basta para que no se sienten juntos, sin importar qué
+ * opine B.
+ */
+async function cargarIncompatibles(cliente) {
+  const { rows } = await cliente.query('SELECT usuario_id, bloqueado_id FROM bloqueos');
+  const set = new Set();
+  for (const r of rows) {
+    set.add(`${r.usuario_id}|${r.bloqueado_id}`);
+    set.add(`${r.bloqueado_id}|${r.usuario_id}`);
+  }
+  return set;
+}
+
+/**
  * Carga la oferta del lado comercio. Todo sale de vistas de frontera
  * (migración 002): la API social no tiene permiso sobre `comercios`,
  * `comercio_planes` ni `comercio_disponibilidad`, y no debe tenerlo.
@@ -261,7 +280,8 @@ async function ejecutar(opciones = {}) {
     }
 
     const oferta = await cargarOferta(cliente);
-    const { grupos, sobrantes } = matching.formarGrupos(candidatos, opciones);
+    const incompatibles = await cargarIncompatibles(cliente);
+    const { grupos, sobrantes } = matching.formarGrupos(candidatos, { ...opciones, incompatibles });
     const resultado = [];
 
     for (const grupo of grupos) {
@@ -539,6 +559,7 @@ function programarEnSegundoPlano(motivo, opciones = {}) {
 module.exports = {
   ESTADOS_OCUPADOS,
   cargarCandidatos,
+  cargarIncompatibles,
   cerrarGruposTerminados,
   HORAS_GRACIA_CIERRE,
   cargarOferta,

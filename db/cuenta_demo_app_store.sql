@@ -250,6 +250,64 @@ ON CONFLICT (id) DO UPDATE SET
 DELETE FROM feedback
  WHERE usuario_id = 'ded00000-0000-4000-8000-000000000001';
 
+-- --- La conversación del grupo -----------------------------------------------
+--
+-- El chat no puede estar vacío cuando el revisor lo abre: una pantalla de chat
+-- sin mensajes se lee igual que una función que no existe. Se siembra una
+-- conversación corta y verosímil, escrita por los cinco acompañantes.
+--
+-- Se borra y se vuelve a insertar en cada corrida para que el revisor anterior
+-- no le deje mensajes al siguiente, y para limpiar lo que se haya probado.
+DELETE FROM mensajes_grupo WHERE grupo_id = 'ded00000-0000-4000-8000-000000000010';
+
+INSERT INTO mensajes_grupo (grupo_id, usuario_id, texto, created_at)
+SELECT 'ded00000-0000-4000-8000-000000000010', v.usuario_id, v.texto, now() - v.hace
+  FROM (VALUES
+    ('ded00000-0000-4000-8000-000000000003'::uuid, '¡Hola a todos! Qué nervios y qué ganas 😄', interval '30 hours'),
+    ('ded00000-0000-4000-8000-000000000002'::uuid, 'Igual. ¿Alguien ha ido antes al Botánico?', interval '29 hours'),
+    ('ded00000-0000-4000-8000-000000000006'::uuid, 'Yo pasé por fuera, se ve lindo. Dicen que la trucha es buenísima', interval '28 hours'),
+    ('ded00000-0000-4000-8000-000000000005'::uuid, 'Pregunta boba: ¿hay dónde parquear cerca?', interval '26 hours'),
+    ('ded00000-0000-4000-8000-000000000003'::uuid, 'Hay un parqueadero a media cuadra, sobre la 14', interval '25 hours'),
+    ('ded00000-0000-4000-8000-000000000004'::uuid, 'Perfecto. Yo llego derecho del trabajo, quizá 10 minutos tarde', interval '9 hours'),
+    ('ded00000-0000-4000-8000-000000000002'::uuid, 'Tranquila, te guardamos puesto 🙌', interval '8 hours')
+  ) AS v(usuario_id, texto, hace);
+
+-- --- Quién viene ------------------------------------------------------------
+--
+-- Tres estados distintos a propósito: confirmados, alguien que no puede ir, y
+-- el revisor sin contestar todavía, para que al abrir la app tenga el botón de
+-- "voy" esperándole y pueda probarlo.
+UPDATE grupo_miembros SET asistencia = 'confirmada', asistencia_actualizada = now() - interval '1 day'
+ WHERE grupo_id = 'ded00000-0000-4000-8000-000000000010'
+   AND usuario_id IN ('ded00000-0000-4000-8000-000000000002',
+                      'ded00000-0000-4000-8000-000000000003',
+                      'ded00000-0000-4000-8000-000000000006');
+
+UPDATE grupo_miembros SET asistencia = 'declinada', asistencia_actualizada = now() - interval '5 hours'
+ WHERE grupo_id = 'ded00000-0000-4000-8000-000000000010'
+   AND usuario_id = 'ded00000-0000-4000-8000-000000000005';
+
+UPDATE grupo_miembros SET asistencia = 'pendiente', asistencia_actualizada = NULL
+ WHERE grupo_id = 'ded00000-0000-4000-8000-000000000010'
+   AND usuario_id IN ('ded00000-0000-4000-8000-000000000001',
+                      'ded00000-0000-4000-8000-000000000004');
+
+-- --- Moderación: la cuenta del revisor vuelve limpia -------------------------
+--
+-- Si probó a bloquear o a reportar —y se espera que lo pruebe—, la siguiente
+-- corrida lo deshace. Un bloqueo heredado escondería mensajes del chat sembrado
+-- y el siguiente revisor vería una conversación con huecos.
+DELETE FROM bloqueos WHERE usuario_id IN (
+  'ded00000-0000-4000-8000-000000000001','ded00000-0000-4000-8000-000000000002',
+  'ded00000-0000-4000-8000-000000000003','ded00000-0000-4000-8000-000000000004',
+  'ded00000-0000-4000-8000-000000000005','ded00000-0000-4000-8000-000000000006')
+   OR bloqueado_id IN (
+  'ded00000-0000-4000-8000-000000000001','ded00000-0000-4000-8000-000000000002',
+  'ded00000-0000-4000-8000-000000000003','ded00000-0000-4000-8000-000000000004',
+  'ded00000-0000-4000-8000-000000000005','ded00000-0000-4000-8000-000000000006');
+
+DELETE FROM reportes WHERE reportante_id = 'ded00000-0000-4000-8000-000000000001';
+
 COMMIT;
 
 -- --- Verificación -----------------------------------------------------------
@@ -269,4 +327,9 @@ SELECT
                        WHERE f.evento_id = e.id
                          AND f.usuario_id = 'ded00000-0000-4000-8000-000000000001')) AS por_valorar,
   (SELECT count(*) FROM tests_personalidad
-    WHERE usuario_id = 'ded00000-0000-4000-8000-000000000001' AND vigente) AS test_vigente;
+    WHERE usuario_id = 'ded00000-0000-4000-8000-000000000001' AND vigente) AS test_vigente,
+  (SELECT count(*) FROM mensajes_grupo
+    WHERE grupo_id = 'ded00000-0000-4000-8000-000000000010' AND NOT oculto) AS mensajes,
+  (SELECT count(*) FROM grupo_miembros
+    WHERE grupo_id = 'ded00000-0000-4000-8000-000000000010'
+      AND asistencia = 'confirmada')                                        AS confirmados;
