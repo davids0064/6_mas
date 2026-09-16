@@ -54,11 +54,24 @@ CÓMO FUNCIONA
    —esto importa— qué datos NO usamos para agruparte.
 4. Te agrupamos con otras cinco personas afines de tu zona. Ves quiénes son y
    qué tienes en común con cada una.
-5. Recibes el plan ya resuelto: local, dirección, día y hora. No lo eliges tú,
+5. Se abre el chat del grupo. Dices si vas, y os organizáis: a qué hora llega
+   cada uno, quién reserva el parqueadero, cómo reconoceros.
+6. Recibes el plan ya resuelto: local, dirección, día y hora. No lo eliges tú,
    y esa es justo la gracia.
-6. Antes de ir, miras el sitio: su carta, qué te encuentras al llegar, a qué
+7. Antes de ir, miras el sitio: su carta, qué te encuentras al llegar, a qué
    hora abre y cómo llegar.
-7. Vas, nos cuentas qué tal estuvo, y entras al siguiente grupo.
+8. Vas, nos cuentas qué tal estuvo, y entras al siguiente grupo.
+
+HABLAD ANTES DE VEROS
+
+En cuanto sois seis se abre el chat. Sirve para lo que sirve: decir que llegas
+tarde, preguntar si hay dónde parquear, avisar de que al final no puedes ir.
+Nadie tiene que dar su teléfono a cinco desconocidos.
+
+Puedes reportar cualquier mensaje o bloquear a quien sea, manteniéndolo pulsado.
+Si bloqueas a alguien, dejas de ver lo que escribe y no volvemos a poneros en el
+mismo grupo. Revisamos todos los reportes en menos de 24 horas y no toleramos
+ningún contenido ofensivo.
 
 TU PERFIL, DE VUELTA
 
@@ -148,14 +161,17 @@ railway ssh --service Postgres "psql -U postgres -d railway -v ON_ERROR_STOP=1" 
 
 ## Notas para el revisor
 
-Texto para el campo *Notas* de la misma pantalla.
+Texto para el campo *Notas*. Está reescrito para la build 1.0 (4): pone primero
+lo que la app deja **hacer**, porque los dos rechazos por 4.2 vinieron de que
+parecía que solo dejaba leer.
 
-> Aviso para quien las pegue: la versión anterior de estas notas invitaba al
-> revisor a registrar una cuenta nueva "si quiere ver el alta desde cero". Esa
-> ruta terminaba en la pantalla de espera con cinco asientos vacíos, y la
-> revisión del 13 de septiembre de 2026 acabó en rechazo por guideline 4.2. La
-> invitación sigue, pero ahora esa ruta desemboca en el perfil de personalidad,
-> que es contenido de verdad. No volver a escribirla sin comprobar dónde acaba.
+> Dos avisos para quien las pegue:
+> 1. La versión de estas notas de septiembre invitaba al revisor a registrar una
+>    cuenta nueva "para ver el alta desde cero", y esa ruta terminaba en la
+>    pantalla de espera vacía. No volver a escribirla sin comprobar dónde acaba.
+> 2. Hay que correr las dos siembras de demo justo antes de enviar. Si no, el
+>    plan del grupo queda en el pasado y el escenario pierde la mitad de la
+>    gracia.
 
 ```
 La app requiere cuenta. Use estas credenciales:
@@ -164,44 +180,51 @@ La app requiere cuenta. Use estas credenciales:
   Contraseña: Revisor2026!
 
 Seis Más agrupa a seis desconocidos por afinidad y les asigna un plan en un
-local real. La cuenta de prueba ya está emparejada, para que vea el estado
-normal de la app y no el de un usuario recién llegado.
+local real. Esta cuenta ya está emparejada, para que vea la app en su estado
+normal y no en el de espera de un usuario recién llegado.
 
-QUÉ PUEDE HACER CON ESTA CUENTA
+QUÉ PUEDE HACER (no solo ver)
 
-1. Su perfil. El test de 20 preguntas devuelve un perfil: qué tipo de compañía
-   es, su posición en tres ejes, y qué preguntas NO se usan para agrupar
-   (género, orientación e identidad no pesan nunca). Accesible desde "Tu
-   perfil" y rehacible cuando quiera.
+1. Escribir al grupo. Botón "Escribir al grupo" en la pantalla principal. Hay
+   una conversación en curso entre las otras cinco personas. Puede escribir.
 
-2. Su grupo. Las otras cinco personas, con lo que comparte con cada una y los
-   intereses que sostienen al grupo entero. De cada persona solo se muestra el
-   nombre de pila: la app no expone datos de contacto de nadie.
+2. Reportar y bloquear. Mantenga pulsado cualquier mensaje ajeno: aparecen
+   "Reportar mensaje" y "Bloquear". Bloquear esconde sus mensajes y además
+   impide que nuestro sistema vuelva a sentar a esas dos personas juntas. El
+   contenido objetable se filtra automáticamente al publicarse y no se entrega
+   a nadie. Los reportes se revisan en menos de 24 horas.
 
-3. El sitio. Desde el plan, "Ver el sitio y la carta" abre el local: su carta
-   publicada con precios, qué se encuentra el grupo al llegar, el horario y un
-   enlace para abrirlo en mapas. Esa información la publica el propio
-   restaurante desde nuestra app de comercios (Seis Más Comercios), así que es
-   contenido real y cambiante, no datos de ejemplo incrustados.
+3. Decir si va. "¿Vas a ir?" con "Sí, voy" / "No puedo". Está sin contestar a
+   propósito para que pueda usarlo. Debajo se ve cuántos han confirmado.
 
-4. Valorar. Hay un plan pasado pendiente de valorar, que abre esa pantalla.
+4. Valorar el plan pasado, desde "Valorar".
 
-5. Su historial y el borrado de cuenta, en Cuenta.
+5. Rehacer el test de personalidad, desde Tu perfil.
+
+6. Eliminar su cuenta, en Cuenta. Es inmediato; si lo usa, avísenos y la
+   reactivamos.
+
+QUÉ PUEDE VER
+
+- Tu perfil: lo que devuelven las 20 preguntas — un tipo, tres ejes, y qué
+  datos NO usamos para agrupar (género, orientación e identidad no influyen
+  nunca en el emparejamiento).
+- Su grupo: las otras cinco personas y qué comparte con cada una. Solo se
+  muestra el nombre de pila; la app no expone datos de contacto de nadie.
+- El sitio: "Ver el sitio y la carta" abre el local con su carta y precios, qué
+  se encuentra el grupo al llegar, horario y cómo llegar. Lo publica el propio
+  restaurante desde nuestra app de comercios, así que es contenido real.
 
 SOBRE LA RECURRENCIA
 
-No es de un solo uso. Cuando el plan de un grupo termina, el grupo se cierra y
-sus seis integrantes vuelven al emparejamiento para el siguiente. Un usuario
-participa tantas veces como quiera.
+No es de un solo uso. Cuando el plan termina, el grupo se cierra y sus seis
+integrantes vuelven al emparejamiento para el siguiente.
 
-SI QUIERE EMPEZAR DE CERO
+IPAD
 
-Puede registrarse con cualquier correo; no enviamos verificación. Al terminar
-el test verá su perfil de inmediato. El grupo, en cambio, se forma cuando hay
-seis personas afines en la misma ciudad, así que una cuenta nueva queda en
-espera hasta entonces: es el comportamiento normal del producto, no un error, y
-por eso le damos arriba una cuenta que ya tiene grupo.
+Esta versión es universal. Las revisiones anteriores se hicieron en un iPad Air
+con una build solo para iPhone, que corría escalada.
 
-La app es para mayores de 18 años. Los datos de este grupo y de este local son
-de demostración.
+Los datos de este grupo y de este local son de demostración. La app es para
+mayores de 18 años.
 ```

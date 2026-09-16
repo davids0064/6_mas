@@ -17,46 +17,37 @@ hay juego de 6.5″ para las dos apps.
 
 | App | Bundle ID | Carpeta | Tamaño | Cuántas |
 | --- | --- | --- | --- | --- |
-| Seis Más | `com.seismas.app` | `ios/6.9-usuarios/` | 1320 × 2868 | 11 (**el máximo son 10**) |
-| Seis Más | `com.seismas.app` | `ios/6.5-usuarios/` | 1284 × 2778 | 11 (**el máximo son 10**) |
+| Seis Más | `com.seismas.app` | `ios/6.9-usuarios/` | 1320 × 2868 | 10 |
+| Seis Más | `com.seismas.app` | `ios/6.5-usuarios/` | 1284 × 2778 | 10 |
+| Seis Más | `com.seismas.app` | `ios/13-ipad-usuarios/` | 2064 × 2752 | 3 |
 | Seis Más Comercios | `com.seismas.comercios` | `ios/6.9-comercios/` | 1320 × 2868 | 12 (**el máximo son 10**) |
 | Seis Más Comercios | `com.seismas.comercios` | `ios/6.5-comercios/` | 1284 × 2778 | 12 (**el máximo son 10**) |
 
+**El juego de iPad es obligatorio desde la build 1.0 (4)**: la app de usuarios
+pasó a ser universal (`TARGETED_DEVICE_FAMILY = "1,2"`), y App Store Connect
+exige capturas de iPad de 13" para toda app que declare soporte de iPad. Sin
+ellas no deja enviar.
+
 ### Cuáles subir de usuarios, y en qué orden
 
-Las tres primeras deciden: en la App Store se ven sin que nadie deslice. Y las
-tres responden a lo que Apple rechazó por guideline 4.2 —que la app no hacía lo
-suficiente—, así que van delante de cualquier formulario.
+El orden cambió tras el segundo rechazo por guideline 4.2. Antes empezaba por
+pantallas que se leen; ahora empieza por las que se usan, porque eso es
+exactamente lo que Apple dijo dos veces que no encontraba. Las tres primeras se
+ven sin que nadie deslice.
 
-1. `06-grupo-afinidad` — seis personas y qué comparte contigo cada una
-2. `08-sitio` — el local, con lo que te encuentras al llegar
-3. `07-perfil` — lo que el test te devuelve
-4. `05-grupos` — tu plan, ya resuelto
-5. `09-carta` — la carta del local, con precios
-6. `04-test` — cómo se decide tu grupo
-7. `10-valoracion`
-8. `01-bienvenida`
-9. `11-cuenta` — incluye el borrado de cuenta, que Apple busca
-10. `03-registro`
+1. `01-chat` — el grupo hablando
+2. `02-asistencia` — "¿Vas a ir?" y cuántos han confirmado
+3. `03-grupo-afinidad` — las seis personas y qué comparte contigo cada una
+4. `04-perfil` — lo que devuelve el test
+5. `05-sitio` — el local, con lo que te encuentras al llegar
+6. `06-carta` — su carta, con precios
+7. `07-plan` — tu plan, ya resuelto
+8. `08-test` — cómo se decide tu grupo
+9. `09-valoracion`
+10. `10-cuenta` — incluye el borrado de cuenta, que Apple busca
 
-Se queda fuera `02-login`: una pantalla de inicio de sesión no vende nada y es
-la que más se parece a cualquier otra app.
-
-Para comercios hay que dejar fuera dos. La recomendación, por orden de lo que
-le importa a un local que está decidiendo si se registra:
-
-1. `02-resumen` — qué ve al abrir la app
-2. `04-evento` — quiénes vienen esta noche
-3. `03-eventos` — la agenda
-4. `05-planes` — lo que le ofrece a un grupo
-5. `06-disponibilidad` — cuándo puede recibir
-6. `07-menus`
-7. `10-propuestas`
-8. `09-anfitriones`
-9. `11-mi-comercio`
-10. `12-cuenta`
-
-y descartar `01-login` (una pantalla de login vende poco) y `08-menu`.
+Quedan fuera bienvenida, login y registro: son las tres pantallas que menos
+distinguen esta app de cualquier otra, y con diez huecos no sobra sitio.
 
 ## Cómo se generaron
 
@@ -119,6 +110,22 @@ entera si no se saben:
   `kd:shift t:2 ku:shift`, y el teclado físico tiene que estar conectado
   (`defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool true`
   y reiniciar el simulador).
+
+### El juego de iPad
+
+Simulador **iPad Pro 13-inch (M5)**, que da exactamente 2064 × 2752. Misma app
+de Release que en iPhone: al ser universal, el mismo binario corre nativo en los
+dos.
+
+Una trampa propia del iPad: **el simulador no lo dibuja a escala 1:1**. Un iPad
+Pro 13" son 1032 × 1376 puntos metidos en una ventana de 770 × 1053, o sea un
+factor de ~0,694. Sin aplicarlo, los toques automatizados caen a dos tercios de
+donde deberían y la sesión se desvía. Las capturas en sí salen a resolución
+nativa porque las toma `simctl`, no la ventana.
+
+Conviene además apagar el simulador de iPhone antes: con los dos abiertos, las
+ventanas se solapan en la misma posición y `position of first window` devuelve
+la que no es.
 
 ## Antes de enviar a revisión
 
