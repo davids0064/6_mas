@@ -51,9 +51,16 @@ router.post('/', async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     // El email se normaliza (trim + minúsculas) para que el login sea
     // insensible a mayúsculas sin importar desde qué cliente se registró.
+    // La aceptación de los términos se registra en el mismo INSERT que crea la
+    // cuenta, y no en una llamada aparte: separarlos abriría la puerta a
+    // cuentas creadas sin aceptación si la segunda llamada falla. La app no
+    // deja llegar al formulario sin haber aceptado antes (guideline 1.2 exige
+    // que el acuerdo se presente ANTES de registrarse), así que crear la
+    // cuenta ya implica la aceptación.
     const { rows } = await db.query(
-      `INSERT INTO usuarios (email, password_hash, nombre, fecha_nacimiento, genero, telefono)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO usuarios (email, password_hash, nombre, fecha_nacimiento, genero, telefono,
+                             terminos_aceptados_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now())
        RETURNING ${CAMPOS_PUBLICOS}`,
       [email.trim().toLowerCase(), passwordHash, nombre, fecha_nacimiento || null, genero || null, telefono || null]
     );
@@ -457,6 +464,30 @@ router.post('/yo/bloqueos', async (req, res, next) => {
        ON CONFLICT DO NOTHING`,
       [req.usuarioId, bloqueadoId]
     );
+
+    // Apple lo pide con estas palabras: bloquear "debe además notificar al
+    // desarrollador del contenido inapropiado". Así que un bloqueo abre
+    // también un reporte, aunque la persona no haya reportado nada: alguien
+    // que bloquea está diciendo que pasó algo, y si eso no llega a la cola de
+    // moderación, nadie se entera nunca.
+    //
+    // Se marca con un motivo propio para poder distinguirlo de un reporte
+    // explícito al revisarlo: no es lo mismo "esto es acoso" que "no quiero
+    // volver a ver a esta persona".
+    const { rows: yaReportado } = await db.query(
+      `SELECT 1 FROM reportes
+        WHERE reportante_id = $1 AND reportado_id = $2
+          AND motivo = 'bloqueo' AND estado = 'abierto'`,
+      [req.usuarioId, bloqueadoId]
+    );
+    if (!yaReportado[0]) {
+      await db.query(
+        `INSERT INTO reportes (reportante_id, reportado_id, motivo, detalle)
+         VALUES ($1, $2, 'bloqueo', 'Bloqueo desde el chat del grupo')`,
+        [req.usuarioId, bloqueadoId]
+      );
+    }
+
     res.status(204).send();
   } catch (err) {
     next(err);

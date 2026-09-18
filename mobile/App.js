@@ -32,10 +32,12 @@ import TestPersonalidadScreen from './src/screens/TestPersonalidadScreen';
 import PerfilScreen from './src/screens/PerfilScreen';
 import LocalScreen from './src/screens/LocalScreen';
 import ChatScreen from './src/screens/ChatScreen';
+import TerminosScreen from './src/screens/TerminosScreen';
 import GruposScreen from './src/screens/GruposScreen';
 import ValoracionScreen from './src/screens/ValoracionScreen';
 import CuentaScreen from './src/screens/CuentaScreen';
 import { sesion } from './src/services/sesion';
+import { terminos } from './src/services/terminos';
 
 export default function App() {
   const [pantalla, setPantalla] = useState('bienvenida');
@@ -56,9 +58,15 @@ export default function App() {
   // en pantalla.
   const haySesion = useRef(false);
 
+  // Si los términos ya están aceptados en este dispositivo, la pantalla de
+  // aceptación no aparece. Va en una ref por el mismo motivo que `haySesion`:
+  // solo la consulta el `onFinish` de la animación, nadie se pinta distinto.
+  const terminosAceptados = useRef(false);
+
   useEffect(() => {
-    sesion.restaurar().then((existe) => {
+    Promise.all([sesion.restaurar(), terminos.restaurar()]).then(([existe, aceptados]) => {
       haySesion.current = existe;
+      terminosAceptados.current = aceptados;
     });
   }, []);
 
@@ -156,9 +164,27 @@ export default function App() {
   // La animación no espera a que se lea el disco: si por lo que sea todavía no
   // terminó cuando acaba, se va al login. Entrar de más es un login extra;
   // quedarse esperando en la bienvenida sería la app colgada.
+  if (pantalla === 'terminos') {
+    return (
+      <TerminosScreen
+        onAceptar={() => {
+          terminosAceptados.current = true;
+          setPantalla(haySesion.current ? 'grupos' : 'login');
+        }}
+      />
+    );
+  }
   return (
     <WelcomeAnimationScreen
-      onFinish={() => setPantalla(haySesion.current ? 'grupos' : 'login')}
+      // La aceptación de los términos va ANTES del login y del registro, que es
+      // lo que exige la guideline 1.2. Por eso se intercala aquí y no dentro
+      // del formulario de registro: quien ya tiene cuenta y solo inicia sesión
+      // también tiene que haberlos aceptado.
+      onFinish={() =>
+        setPantalla(
+          !terminosAceptados.current ? 'terminos' : haySesion.current ? 'grupos' : 'login'
+        )
+      }
     />
   );
 }

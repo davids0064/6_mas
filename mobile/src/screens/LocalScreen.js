@@ -11,7 +11,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,15 +32,42 @@ function formatearPrecio(valor) {
   return n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
 }
 
-// Abre la dirección en la app de mapas del sistema. `geo:` no existe en iOS y
-// `maps://` no existe en Android, así que se usa la URL de Google Maps, que
-// las dos plataformas resuelven a su app nativa si está instalada y al
-// navegador si no. Es el único enlace externo de toda la app.
+// Abrir la dirección en un mapa.
+//
+// Antes esto mandaba directo a Google Maps, y Apple lo rechazó por guideline 4:
+// "The app's location feature is not integrated with the built-in mapping
+// functionality, which limits users to a third-party maps app". En iOS tiene
+// que poder abrirse en Apple Maps.
+//
+// La solución no es cambiar un tercero por otro, sino preguntar: en iOS se
+// ofrecen las dos, con Apple Maps primero por ser la del sistema, y en Android
+// —donde Apple Maps no existe— se va directo a Google Maps sin preguntar nada.
+// Un diálogo con una sola opción real es una molestia, no una elección.
+function consultaDe(comercio) {
+  return [comercio.nombre, comercio.direccion, comercio.ciudad].filter(Boolean).join(', ');
+}
+
+const urlAppleMaps = (q) => `http://maps.apple.com/?q=${encodeURIComponent(q)}`;
+const urlGoogleMaps = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
 function abrirEnMapas(comercio) {
-  const consulta = [comercio.nombre, comercio.direccion, comercio.ciudad]
-    .filter(Boolean)
-    .join(', ');
-  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(consulta)}`);
+  const q = consultaDe(comercio);
+
+  if (Platform.OS !== 'ios') {
+    Linking.openURL(urlGoogleMaps(q));
+    return;
+  }
+
+  Alert.alert(
+    'Cómo llegar',
+    consultaDe(comercio),
+    [
+      { text: 'Abrir en Mapas', onPress: () => Linking.openURL(urlAppleMaps(q)) },
+      { text: 'Abrir en Google Maps', onPress: () => Linking.openURL(urlGoogleMaps(q)) },
+      { text: 'Cancelar', style: 'cancel' },
+    ],
+    { cancelable: true }
+  );
 }
 
 function Seccion({ seccion }) {

@@ -18,6 +18,7 @@
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { Alert, Linking, Platform, TouchableOpacity } from 'react-native';
 
 import LocalScreen from '../src/screens/LocalScreen';
 import { api } from '../src/services/api';
@@ -125,4 +126,68 @@ test('un comercio dado de baja lo dice, y no deja la pantalla muda', async () =>
   const t = textos(await render({ comercio: null, anfitrion: null, propuesta: null, menus: [] }));
   expect(t).toContain('ya no está disponible');
   expect(t).toContain('Tu plan sigue en pie');
+});
+
+
+// --- Guideline 4: mapas ------------------------------------------------------
+//
+// Apple rechazó la build 1.0 (4) porque la dirección solo se podía abrir en
+// Google Maps: "limits users to a third-party maps app". En iOS hay que poder
+// abrirla en Apple Maps.
+
+function textoNodo(n) {
+  if (n === null || n === undefined || typeof n === 'boolean') return '';
+  if (typeof n === 'string' || typeof n === 'number') return String(n);
+  if (Array.isArray(n)) return n.map(textoNodo).join(' ');
+  if (n.props) return textoNodo(n.props.children);
+  return '';
+}
+const botonConTexto = (a, frase) =>
+  a.root.findAllByType(TouchableOpacity).find((b) => textoNodo(b.props.children).includes(frase));
+
+test('en iOS ofrece Apple Maps además de Google Maps', async () => {
+  Platform.OS = 'ios';
+  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const arbol = await render(COMPLETO);
+
+  await act(async () => botonConTexto(arbol, 'Cómo llegar').props.onPress());
+
+  expect(Alert.alert).toHaveBeenCalled();
+  const opciones = Alert.alert.mock.calls[0][2].map((o) => o.text);
+  expect(opciones.some((o) => /Abrir en Mapas/.test(o))).toBe(true);
+  expect(opciones.some((o) => /Google Maps/.test(o))).toBe(true);
+  // Apple Maps primero: es la del sistema.
+  expect(opciones[0]).toMatch(/Abrir en Mapas/);
+  Alert.alert.mockRestore();
+});
+
+test('la opción de Apple Maps abre maps.apple.com con la dirección', async () => {
+  Platform.OS = 'ios';
+  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  const arbol = await render(COMPLETO);
+
+  await act(async () => botonConTexto(arbol, 'Cómo llegar').props.onPress());
+  await act(async () => Alert.alert.mock.calls[0][2][0].onPress());
+
+  const url = Linking.openURL.mock.calls[0][0];
+  expect(url).toMatch(/^http:\/\/maps\.apple\.com\/\?q=/);
+  expect(decodeURIComponent(url)).toContain('Café Botánico');
+  Linking.openURL.mockRestore();
+  Alert.alert.mockRestore();
+});
+
+test('en Android va directo a Google Maps, sin un diálogo de una sola opción', async () => {
+  Platform.OS = 'android';
+  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  const arbol = await render(COMPLETO);
+
+  await act(async () => botonConTexto(arbol, 'Cómo llegar').props.onPress());
+
+  expect(Alert.alert).not.toHaveBeenCalled();
+  expect(Linking.openURL.mock.calls[0][0]).toMatch(/google\.com\/maps/);
+  Linking.openURL.mockRestore();
+  Alert.alert.mockRestore();
+  Platform.OS = 'ios';
 });
