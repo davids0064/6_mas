@@ -121,9 +121,30 @@ vacío. Para la 1.1 en adelante, describir cambios concretos.
 | Categoría principal | Estilo de vida | El plan y el encuentro son el producto |
 | Categoría secundaria | Redes sociales | |
 | Clasificación por edad | 17+ | Encuentros presenciales entre desconocidos |
+| **Contenido generado por usuarios** | **Sí** | **Ver abajo: causó dos rechazos seguidos** |
 | URL de política de privacidad | `https://api-production-2a3c5.up.railway.app/privacidad` | Tiene que ser exactamente la que enlaza la app |
 | URL de soporte | pendiente | Apple la exige; hoy no hay ninguna |
 | Copyright | `2026 David Salamanca` | |
+
+### La pregunta de contenido generado por usuarios
+
+En *App Information → Age Rating* hay que responder **"Yes"** a **User-Generated
+Content**. No es un campo de texto ni depende de ninguna build: es un
+cuestionario aparte, y por eso se salta con facilidad.
+
+Costó los rechazos del 18 y del 21 de septiembre de 2026 (guideline 2.3.6). El
+del 21 fue **el único motivo** que quedaba: todo lo demás ya había pasado, y la
+app se quedó otro ciclo fuera por una casilla.
+
+Es obligatorio desde que la app tiene chat de grupo. La clasificación resultante
+puede subir por encima de 17+, y está bien que suba: la clasificación tiene que
+reflejar lo que la gente puede encontrarse dentro, y en un chat entre
+desconocidos eso no lo decide el desarrollador.
+
+Al cambiar la clasificación, App Store Connect pide **confirmar** el cambio y
+puede exigir volver a enviar la versión. Hay que comprobar que la app quede en
+*Waiting for Review* después de guardar, no en *Developer Rejected* ni en
+*Metadata Rejected*.
 
 ## Lo que todavía falta para enviar
 
