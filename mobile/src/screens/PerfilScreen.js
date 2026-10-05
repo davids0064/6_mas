@@ -34,30 +34,59 @@ import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, COLUMNA } from '../theme/tokens
 // decir "Expansivo" a alguien por una respuesta es inventar.
 const MINIMO_PARA_AFIRMAR = 2;
 
-function Eje({ eje }) {
+function Eje({ eje, indice }) {
   if (eje.valor === null) return null;
   const porcentaje = Math.round(eje.valor * 100);
   const flojo = eje.preguntas_usadas < MINIMO_PARA_AFIRMAR;
 
+  // Qué tan marcada está la inclinación. Sirve para no decir lo mismo de quien
+  // está en el 95% que de quien está en el 55%: el segundo no está en un
+  // extremo, está en medio, y presentarlo igual sería inventar.
+  const distanciaDelCentro = Math.abs(porcentaje - 50);
+  const enMedio = distanciaDelCentro < 15;
+  const haciaAlto = porcentaje >= 50;
+  const matiz = enMedio
+    ? 'Te mueves entre los dos'
+    : distanciaDelCentro >= 35
+      ? `Muy ${(haciaAlto ? eje.polo_alto : eje.polo_bajo).toLowerCase()}`
+      : `Más ${(haciaAlto ? eje.polo_alto : eje.polo_bajo).toLowerCase()}`;
+
   return (
-    <View style={estilos.eje}>
+    <Animated.View
+      entering={FadeInDown.delay(120 + indice * 70).duration(400)}
+      style={estilos.eje}
+    >
       <View style={estilos.ejeCabecera}>
         <Text style={estilos.ejeEtiqueta}>{eje.etiqueta}</Text>
         {flojo ? <Text style={estilos.ejeFlojo}>1 respuesta</Text> : null}
       </View>
 
+      <Text style={estilos.ejeMatiz}>{matiz}</Text>
+
       <View style={estilos.barra}>
-        <View style={[estilos.barraRelleno, { width: `${porcentaje}%` }]} />
-        {/* El punto marca dónde cae la persona; la barra no es una nota que
-            se llena, es una posición entre dos extremos igual de válidos. */}
+        {/* Marca del centro: sin ella la barra parece una nota que se llena, y
+            lo que mide es una posición entre dos extremos igual de válidos. */}
+        <View style={estilos.barraCentro} />
+        <View
+          style={[
+            estilos.barraTramo,
+            haciaAlto
+              ? { left: '50%', width: `${distanciaDelCentro}%` }
+              : { right: '50%', width: `${distanciaDelCentro}%` },
+          ]}
+        />
         <View style={[estilos.barraPunto, { left: `${porcentaje}%` }]} />
       </View>
 
       <View style={estilos.ejePolos}>
-        <Text style={[estilos.polo, porcentaje < 50 && estilos.poloActivo]}>{eje.polo_bajo}</Text>
-        <Text style={[estilos.polo, porcentaje >= 50 && estilos.poloActivo]}>{eje.polo_alto}</Text>
+        <Text style={[estilos.polo, !haciaAlto && !enMedio && estilos.poloActivo]}>
+          {eje.polo_bajo}
+        </Text>
+        <Text style={[estilos.polo, haciaAlto && !enMedio && estilos.poloActivo]}>
+          {eje.polo_alto}
+        </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -111,16 +140,32 @@ export default function PerfilScreen({ onVolver, onHacerTest }) {
 
           {perfil ? (
             <>
+              {/* La tarjeta del tipo es lo primero y lo más grande de la
+                  pantalla: es la respuesta a las veinte preguntas, y hasta
+                  ahora competía en peso visual con los ejes y con la lista de
+                  abajo. El icono le da algo que recordar — la gente dice "me
+                  salió el del fuego" antes que el nombre completo. */}
               <Animated.View entering={FadeInDown.duration(400)} style={estilos.tarjetaTipo}>
-                <Text style={estilos.tipoEtiqueta}>ERES</Text>
+                <Text style={estilos.tipoIcono}>{perfil.icono || '✨'}</Text>
+                <Text style={estilos.tipoEtiqueta}>TU PERFIL</Text>
                 <Text style={estilos.tipoTitulo}>{perfil.titulo}</Text>
                 <Text style={estilos.tipoResumen}>{perfil.resumen}</Text>
               </Animated.View>
 
+              {/* Para qué sirve. Iba sin decirse, y es justo lo que hace que
+                  alguien se tome el test en serio: sin esto, el perfil parece
+                  un horóscopo bonito en vez de el criterio con el que se le
+                  sienta en una mesa. */}
+              {perfil.proposito ? (
+                <Animated.View entering={FadeInDown.delay(80).duration(400)} style={estilos.proposito}>
+                  <Text style={estilos.propositoTexto}>{perfil.proposito}</Text>
+                </Animated.View>
+              ) : null}
+
               <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-                <Text style={estilos.seccion}>Cómo te leemos</Text>
-                {perfil.ejes.map((eje) => (
-                  <Eje key={eje.clave} eje={eje} />
+                <Text style={estilos.seccion}>¿Cómo te leemos?</Text>
+                {perfil.ejes.map((eje, i) => (
+                  <Eje key={eje.clave} eje={eje} indice={i} />
                 ))}
               </Animated.View>
 
@@ -179,24 +224,41 @@ const estilos = StyleSheet.create({
   tarjetaTipo: {
     backgroundColor: COLORES.negroMarca,
     borderRadius: RADIOS.tarjeta,
-    padding: ESPACIADO.l,
-    marginBottom: ESPACIADO.l,
+    paddingVertical: ESPACIADO.xl,
+    paddingHorizontal: ESPACIADO.l,
+    marginBottom: ESPACIADO.m,
+    alignItems: 'center',
   },
+  tipoIcono: { fontSize: 52, marginBottom: ESPACIADO.s },
   tipoEtiqueta: {
     ...TIPOGRAFIA.ayuda,
     color: COLORES.blanco,
-    opacity: 0.6,
-    letterSpacing: 2,
+    opacity: 0.55,
+    letterSpacing: 3,
     marginBottom: ESPACIADO.xs,
   },
-  tipoTitulo: { ...TIPOGRAFIA.titulo, color: COLORES.blanco },
+  tipoTitulo: {
+    ...TIPOGRAFIA.titulo,
+    fontSize: 28,
+    color: COLORES.blanco,
+    textAlign: 'center',
+  },
   tipoResumen: {
     ...TIPOGRAFIA.subtitulo,
     color: COLORES.blanco,
     opacity: 0.85,
-    marginTop: ESPACIADO.s,
-    lineHeight: 22,
+    marginTop: ESPACIADO.m,
+    lineHeight: 23,
+    textAlign: 'center',
   },
+  proposito: {
+    borderLeftWidth: 3,
+    borderLeftColor: COLORES.rojoMarca,
+    paddingLeft: ESPACIADO.m,
+    paddingVertical: ESPACIADO.xs,
+    marginBottom: ESPACIADO.xl,
+  },
+  propositoTexto: { ...TIPOGRAFIA.subtitulo, color: COLORES.textoSuave, lineHeight: 21 },
 
   seccion: {
     ...TIPOGRAFIA.etiqueta,
@@ -206,25 +268,49 @@ const estilos = StyleSheet.create({
     marginBottom: ESPACIADO.m,
   },
 
-  eje: { marginBottom: ESPACIADO.l },
-  ejeCabecera: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ejeEtiqueta: { ...TIPOGRAFIA.etiqueta, color: COLORES.texto },
-  ejeFlojo: { ...TIPOGRAFIA.ayuda, color: COLORES.textoTenue },
-  barra: {
-    height: 6,
-    borderRadius: 3,
+  eje: {
     backgroundColor: COLORES.superficie,
-    marginTop: ESPACIADO.s,
+    borderRadius: RADIOS.campo,
+    padding: ESPACIADO.m,
+    marginBottom: ESPACIADO.m,
+  },
+  ejeCabecera: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  ejeEtiqueta: { ...TIPOGRAFIA.etiqueta, fontSize: 16, color: COLORES.texto },
+  ejeFlojo: { ...TIPOGRAFIA.ayuda, color: COLORES.textoTenue },
+  ejeMatiz: { ...TIPOGRAFIA.ayuda, color: COLORES.rojoMarca, fontWeight: '700', marginTop: 2 },
+  barra: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORES.blanco,
+    marginTop: ESPACIADO.m,
     justifyContent: 'center',
   },
-  barraRelleno: { height: 6, borderRadius: 3, backgroundColor: COLORES.rojoMarca, opacity: 0.25 },
+  // El tramo crece DESDE el centro hacia el lado que corresponde, así que de
+  // un vistazo se ve hacia dónde se inclina y cuánto. Un relleno desde la
+  // izquierda se leería como una nota del 0 al 100.
+  barraCentro: {
+    position: 'absolute',
+    left: '50%',
+    width: 1,
+    height: 10,
+    backgroundColor: COLORES.borde,
+  },
+  barraTramo: {
+    position: 'absolute',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORES.rojoMarca,
+    opacity: 0.2,
+  },
   barraPunto: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: COLORES.rojoMarca,
-    marginLeft: -7,
+    marginLeft: -8,
+    borderWidth: 2,
+    borderColor: COLORES.blanco,
   },
   ejePolos: { flexDirection: 'row', justifyContent: 'space-between', marginTop: ESPACIADO.s },
   polo: { ...TIPOGRAFIA.ayuda, color: COLORES.textoTenue },

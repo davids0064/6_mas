@@ -35,10 +35,10 @@ test('sin respuestas no se inventa un perfil', () => {
 });
 
 test('los extremos caen en el tipo que les corresponde', () => {
-  const reservado = perfil.construir(BASE);
-  assert.strictEqual(reservado.titulo, 'De grupo corto y buena mesa');
+  const haciaDentro = perfil.construir(BASE);
+  assert.strictEqual(haciaDentro.titulo, 'De grupo corto y buena mesa');
 
-  const expansivo = perfil.construir({
+  const haciaFuera = perfil.construir({
     ...BASE,
     temperamento: 'extrovertido',
     antiestres: 'fiesta',
@@ -48,7 +48,33 @@ test('los extremos caen en el tipo que les corresponde', () => {
     ideas: 'innovadoras',
     informacion: 'viajes',
   });
-  assert.strictEqual(expansivo.titulo, 'El que rompe el hielo');
+  assert.strictEqual(haciaFuera.titulo, 'Quien rompe el hielo');
+});
+
+// El perfil se le muestra a cualquiera, y un tipo en masculino deja fuera a
+// media mesa. Esto no es estilo: es la diferencia entre que alguien se
+// reconozca en su resultado o no.
+test('ningún tipo ni ningún polo está en masculino', () => {
+  const ARTICULO_MASCULINO = /^(El|Un)\s/;
+  for (const tipo of perfil.TIPOS) {
+    assert.ok(!ARTICULO_MASCULINO.test(tipo.titulo), `"${tipo.titulo}" arranca en masculino`);
+  }
+  // Los polos eran adjetivos ('Reservado', 'Expansivo'). Ahora son direcciones,
+  // que además describen mejor un eje: nadie es "un expansivo".
+  for (const eje of perfil.EJES) {
+    for (const polo of eje.polos) {
+      assert.ok(!/[ao]do$|ivo$|[^s]or$/.test(polo), `el polo "${polo}" sigue siendo un adjetivo`);
+    }
+  }
+});
+
+test('cada tipo trae su icono, y el perfil lo expone', () => {
+  for (const tipo of perfil.TIPOS) {
+    assert.ok(tipo.icono, `${tipo.titulo} sin icono`);
+  }
+  const p = perfil.construir(BASE);
+  assert.ok(p.icono, 'el icono no llega a la app');
+  assert.ok(p.proposito, 'falta la explicación de para qué sirve el perfil');
 });
 
 test('una respuesta neutra no empuja hacia ningún polo', () => {

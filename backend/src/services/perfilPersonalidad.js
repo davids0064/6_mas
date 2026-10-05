@@ -26,7 +26,10 @@ const EJES = [
   {
     clave: 'energia_social',
     etiqueta: 'Energía social',
-    polos: ['Reservado', 'Expansivo'],
+    // 'Reservado'/'Expansivo' eran adjetivos en masculino. Los polos pasan a
+    // ser direcciones, que además describen mejor un eje que un adjetivo
+    // suelto: nadie es 'un expansivo', la energía va hacia algún lado.
+    polos: ['Hacia dentro', 'Hacia fuera'],
     // Cuánta gente y cuánto ruido te sienta bien, no cuánto "vales" socialmente.
     preguntas: {
       temperamento: { alto: ['extrovertido'], bajo: ['introvertido'] },
@@ -59,25 +62,36 @@ const EJES = [
 
 // Las cuatro combinaciones de los dos ejes que más determinan cómo se vive una
 // mesa con cinco desconocidos. El título es descriptivo, no un veredicto.
+//
+// Los títulos van en forma neutra ("Quien…", no "El que…"): el perfil se le
+// muestra a cualquiera, y un tipo en masculino deja fuera a media mesa. El
+// cuarto ya era neutro y se queda como estaba.
+//
+// `icono` es lo único decorativo de este módulo, y está acá y no en la app
+// porque el icono ES parte del tipo: si se añadiera un quinto tipo desde el
+// backend, la pantalla no tendría de dónde sacar el suyo.
 const TIPOS = [
   {
     energiaAlta: true,
     aperturaAlta: true,
-    titulo: 'El que rompe el hielo',
+    titulo: 'Quien rompe el hielo',
+    icono: '🔥',
     resumen:
       'Te mueve la gente nueva y los planes que no conocías. En una mesa de seis sueles ser quien arranca la conversación y propone lo siguiente.',
   },
   {
     energiaAlta: true,
     aperturaAlta: false,
-    titulo: 'El anfitrión de casa',
+    titulo: 'Quien recibe en casa',
+    icono: '🏡',
     resumen:
       'Disfrutas la mesa llena, pero sobre terreno conocido. Te lo pasas mejor cuando el plan es claro y la conversación puede estirarse sin sobresaltos.',
   },
   {
     energiaAlta: false,
     aperturaAlta: true,
-    titulo: 'El explorador tranquilo',
+    titulo: 'Quien explora sin ruido',
+    icono: '🧭',
     resumen:
       'Te interesa lo que no conocías más que el ruido. Sueles escuchar primero y entrar cuando la conversación se pone concreta.',
   },
@@ -85,6 +99,7 @@ const TIPOS = [
     energiaAlta: false,
     aperturaAlta: false,
     titulo: 'De grupo corto y buena mesa',
+    icono: '🕯️',
     resumen:
       'Prefieres la conversación de pocos y sin prisa. Seis es tu límite cómodo, y por eso los grupos son de seis.',
   },
@@ -160,7 +175,14 @@ function construir(respuestas) {
   return {
     version: 1,
     titulo: tipo.titulo,
+    icono: tipo.icono,
     resumen: tipo.resumen,
+    // Para qué sirve todo esto. Va con el perfil y no escrito en la pantalla
+    // porque es la razón de ser del módulo, no una decoración del cliente:
+    // alguien que contestó veinte preguntas merece saber qué se hizo con
+    // ellas, y es lo que explica por qué vale la pena responderlas bien.
+    proposito:
+      'Esto es lo que miramos para sentarte con cinco personas con las que la vas a pasar bien. No es un diagnóstico ni una etiqueta: describe cómo te gusta estar en una mesa.',
     ejes,
     no_se_usan: Object.entries(NO_SE_USAN)
       .filter(([pregunta]) => respuestas[pregunta] !== undefined)

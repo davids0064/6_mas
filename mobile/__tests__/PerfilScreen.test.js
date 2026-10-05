@@ -37,14 +37,16 @@ jest.mock('react-native-reanimated', () => {
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
 const PERFIL = {
-  titulo: 'El explorador tranquilo',
+  titulo: 'Quien explora sin ruido',
+  icono: '🧭',
+  proposito: 'Esto es lo que miramos para sentarte con cinco personas con las que la vas a pasar bien.',
   resumen: 'Te interesa lo que no conocías más que el ruido.',
   ejes: [
     {
       clave: 'energia_social',
       etiqueta: 'Energía social',
-      polo_bajo: 'Reservado',
-      polo_alto: 'Expansivo',
+      polo_bajo: 'Hacia dentro',
+      polo_alto: 'Hacia fuera',
       valor: 0.25,
       preguntas_usadas: 4,
     },
@@ -82,12 +84,34 @@ async function render(props = {}) {
   return arbol;
 }
 
-test('muestra el tipo y su descripción', async () => {
+test('muestra el tipo, su icono y su descripción', async () => {
   api.obtenerMiPerfilPersonalidad.mockResolvedValue(PERFIL);
-  const arbol = await render();
-  const t = textos(arbol);
-  expect(t).toContain('El explorador tranquilo');
+  const t = textos(await render());
+  expect(t).toContain('Quien explora sin ruido');
+  expect(t).toContain('🧭');
   expect(t).toContain('Te interesa lo que no conocías más que el ruido.');
+});
+
+test('explica para qué sirve el perfil', async () => {
+  // Sin esto el perfil parece un horóscopo bonito en vez del criterio con el
+  // que se decide con quién se sienta la persona, que es lo que hace que valga
+  // la pena responder el test con atención.
+  api.obtenerMiPerfilPersonalidad.mockResolvedValue(PERFIL);
+  expect(textos(await render())).toContain('para sentarte con cinco personas');
+});
+
+test('el encabezado de los ejes lleva signos de interrogación', async () => {
+  api.obtenerMiPerfilPersonalidad.mockResolvedValue(PERFIL);
+  expect(textos(await render())).toContain('¿Cómo te leemos?');
+});
+
+test('dice de qué lado cae cada eje, sin tratarlo como una nota', async () => {
+  api.obtenerMiPerfilPersonalidad.mockResolvedValue(PERFIL);
+  const t = textos(await render());
+  // energia_social = 0.25 → claramente hacia dentro, pero no en el extremo.
+  expect(t).toMatch(/Más hacia dentro/i);
+  // apertura = 1 → extremo.
+  expect(t).toMatch(/Muy de lo nuevo/i);
 });
 
 test('dibuja los ejes con dato y omite el que no tiene', async () => {
