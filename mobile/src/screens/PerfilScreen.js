@@ -17,6 +17,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
@@ -140,16 +141,36 @@ export default function PerfilScreen({ onVolver, onHacerTest }) {
 
           {perfil ? (
             <>
-              {/* La tarjeta del tipo es lo primero y lo más grande de la
-                  pantalla: es la respuesta a las veinte preguntas, y hasta
-                  ahora competía en peso visual con los ejes y con la lista de
-                  abajo. El icono le da algo que recordar — la gente dice "me
-                  salió el del fuego" antes que el nombre completo. */}
-              <Animated.View entering={FadeInDown.duration(400)} style={estilos.tarjetaTipo}>
-                <Text style={estilos.tipoIcono}>{perfil.icono || '✨'}</Text>
-                <Text style={estilos.tipoEtiqueta}>TU PERFIL</Text>
-                <Text style={estilos.tipoTitulo}>{perfil.titulo}</Text>
-                <Text style={estilos.tipoResumen}>{perfil.resumen}</Text>
+              {/* Tarjeta del tipo, según el diseño de AJUSTES DISEÑO APP 2.0
+                  (página 3): fotografía de fondo, "ERES" arriba a la izquierda
+                  y el título encima de la imagen, con la descripción en un
+                  bloque aparte debajo.
+
+                  El degradado oscuro no es decoración: el texto blanco sobre
+                  una foto con cielo claro a media altura sería ilegible, y
+                  este fondo tiene zonas naranjas y verdes. Se oscurece de
+                  arriba abajo, que es donde cae el texto. */}
+              <Animated.View entering={FadeInDown.duration(400)}>
+                <ImageBackground
+                  source={require('../../assets/perfil_fondo.jpg')}
+                  style={estilos.tarjetaTipo}
+                  imageStyle={estilos.tarjetaTipoImagen}
+                  resizeMode="cover"
+                >
+                  <View style={estilos.veloTipo} />
+                  <Text style={estilos.tipoEtiqueta}>ERES</Text>
+                  <Text style={estilos.tipoTitulo}>
+                    {perfil.icono ? `${perfil.icono}  ` : ''}
+                    {perfil.titulo}
+                  </Text>
+                </ImageBackground>
+
+                {/* La descripción sale de la tarjeta y va en su propio bloque,
+                    como en el diseño: sobre la foto competía con el título y
+                    costaba leerla. */}
+                <View style={estilos.tipoResumenBloque}>
+                  <Text style={estilos.tipoResumen}>{perfil.resumen}</Text>
+                </View>
               </Animated.View>
 
               {/* Para qué sirve. Iba sin decirse, y es justo lo que hace que
@@ -222,32 +243,51 @@ const estilos = StyleSheet.create({
   },
 
   tarjetaTipo: {
-    backgroundColor: COLORES.negroMarca,
+    minHeight: 190,
     borderRadius: RADIOS.tarjeta,
-    paddingVertical: ESPACIADO.xl,
+    paddingVertical: ESPACIADO.l,
     paddingHorizontal: ESPACIADO.l,
-    marginBottom: ESPACIADO.m,
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    backgroundColor: COLORES.negroMarca,
   },
-  tipoIcono: { fontSize: 52, marginBottom: ESPACIADO.s },
+  // El redondeo tiene que ir también en la imagen: ImageBackground pinta el
+  // bitmap por debajo del contenedor y, sin esto, las esquinas de la foto
+  // sobresalen por fuera del radio.
+  tarjetaTipoImagen: { borderRadius: RADIOS.tarjeta },
+  veloTipo: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORES.negroMarca,
+    opacity: 0.45,
+  },
   tipoEtiqueta: {
     ...TIPOGRAFIA.ayuda,
     color: COLORES.blanco,
-    opacity: 0.55,
-    letterSpacing: 3,
+    opacity: 0.8,
+    letterSpacing: 2,
     marginBottom: ESPACIADO.xs,
   },
   tipoTitulo: {
     ...TIPOGRAFIA.titulo,
     fontSize: 28,
     color: COLORES.blanco,
-    textAlign: 'center',
+    // Sombra suave: la foto tiene zonas claras y el blanco puro desaparece
+    // encima de ellas aunque esté el velo.
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  tipoResumenBloque: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.campo,
+    paddingVertical: ESPACIADO.m,
+    paddingHorizontal: ESPACIADO.l,
+    marginTop: ESPACIADO.s,
+    marginBottom: ESPACIADO.m,
   },
   tipoResumen: {
     ...TIPOGRAFIA.subtitulo,
-    color: COLORES.blanco,
-    opacity: 0.85,
-    marginTop: ESPACIADO.m,
+    color: COLORES.texto,
     lineHeight: 23,
     textAlign: 'center',
   },

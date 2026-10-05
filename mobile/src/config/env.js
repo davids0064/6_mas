@@ -79,9 +79,13 @@ export const URL_SOPORTE = `${URL_PRODUCCION}/soporte`;
 // El número va en formato internacional sin signos, que es lo que espera wa.me.
 // Vacío = no se pinta esa opción, en vez de dejar un enlace que no lleva a
 // ningún lado.
-export const WHATSAPP = '';
+//
+// Hay dos líneas de WhatsApp (300 4412005 y 310 8861775). En la app se enlaza
+// la primera: un solo destino de toque es más claro que dos botones iguales.
+// La página /soporte sí muestra las dos, que es donde alguien va a elegir.
+export const WHATSAPP = '573004412005';
 export const INSTAGRAM = 'https://www.instagram.com/somos6mas/';
-export const EMAIL_CONTACTO = 'hola@seismas.app';
+export const EMAIL_CONTACTO = 'holaseismas@pulsodigital.co';
 
 // Apuntar una build de debug al backend desplegado (para probar contra datos
 // reales sin compilar en release) es cambiar esta línea por

@@ -166,18 +166,36 @@ test('cerrar sesión limpia la sesión sin borrar la cuenta', async () => {
 // sin configurar NO se pinte: un enlace de WhatsApp sin número abre una
 // pantalla de error de la propia app de WhatsApp, que es peor que no ofrecerlo.
 
-test('ofrece correo, Instagram y las preguntas frecuentes', async () => {
+test('ofrece las tres vías de contacto y las preguntas frecuentes', async () => {
   api.obtenerMiPerfil.mockResolvedValue(PERFIL);
   const t = textos(await montar());
-  expect(t).toContain('hola@seismas.app');
+  expect(t).toContain('WhatsApp');
+  expect(t).toContain('holaseismas@pulsodigital.co');
   expect(t).toContain('somos6mas');
   expect(t).toContain('Preguntas frecuentes');
 });
 
-test('sin número configurado, WhatsApp no aparece', async () => {
-  // WHATSAPP está vacío en config/env.js hasta que se fije el número real.
+test('solo se pinta lo que está configurado', async () => {
+  // Las vías se leen de config/env.js y se pintan solo si tienen valor: un
+  // enlace de WhatsApp sin número abre una pantalla de error de la propia app
+  // de WhatsApp, y es peor que no ofrecer la opción.
+  //
+  // Se comprueba contra la configuración real en vez de sustituir el módulo:
+  // volver a requerir la pantalla con jest.resetModules() le da otra copia de
+  // React y revienta con "Cannot read properties of null (reading 'useState')".
+  // Así, además, la prueba sigue valiendo el día que se añada o se quite una vía.
+  const env = require('../src/config/env');
   api.obtenerMiPerfil.mockResolvedValue(PERFIL);
-  expect(textos(await montar())).not.toContain('WhatsApp');
+  const t = textos(await montar());
+
+  for (const [valor, marca] of [
+    [env.WHATSAPP, 'WhatsApp'],
+    [env.EMAIL_CONTACTO, env.EMAIL_CONTACTO],
+    [env.INSTAGRAM, 'somos6mas'],
+  ]) {
+    if (valor) expect(t).toContain(marca);
+    else expect(t).not.toContain(marca);
+  }
 });
 
 test('los enlaces de contacto abren lo que deben', async () => {
@@ -189,12 +207,13 @@ test('los enlaces de contacto abren lo que deben', async () => {
   });
   const arbol = await montar();
 
-  for (const frase of ['hola@seismas.app', 'somos6mas', 'Preguntas frecuentes']) {
+  for (const frase of ['WhatsApp', 'holaseismas@pulsodigital.co', 'somos6mas', 'Preguntas frecuentes']) {
     await act(async () => botonConTexto(arbol, frase).props.onPress());
   }
 
-  expect(abiertos[0]).toBe('mailto:hola@seismas.app');
-  expect(abiertos[1]).toBe('https://www.instagram.com/somos6mas/');
-  expect(abiertos[2]).toMatch(/\/soporte$/);
+  expect(abiertos[0]).toBe('https://wa.me/573004412005');
+  expect(abiertos[1]).toBe('mailto:holaseismas@pulsodigital.co');
+  expect(abiertos[2]).toBe('https://www.instagram.com/somos6mas/');
+  expect(abiertos[3]).toMatch(/\/soporte$/);
   Linking.openURL.mockRestore();
 });

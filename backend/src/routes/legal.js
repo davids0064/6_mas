@@ -25,7 +25,13 @@ const EMAIL_CONTACTO = (process.env.EMAIL_CONTACTO || '').trim();
 //
 // El número se guarda en formato internacional sin signos (573001234567), que
 // es lo que wa.me espera.
-const WHATSAPP = (process.env.WHATSAPP_CONTACTO || '').replace(/[^0-9]/g, '');
+// Son dos líneas, así que la variable admite varias separadas por coma. Se
+// muestran las dos: quien escribe a soporte prefiere elegir a que le digan
+// "escribe a este y si no contesta, al otro".
+const WHATSAPP = (process.env.WHATSAPP_CONTACTO || '')
+  .split(',')
+  .map((n) => n.replace(/[^0-9]/g, ''))
+  .filter(Boolean);
 const INSTAGRAM = (process.env.INSTAGRAM_URL || 'https://www.instagram.com/somos6mas/').trim();
 
 if (!EMAIL_CONTACTO) {
@@ -34,7 +40,7 @@ if (!EMAIL_CONTACTO) {
       'de contacto. Apple exige una en la política de privacidad antes de enviar a revisión.'
   );
 }
-if (!WHATSAPP) {
+if (!WHATSAPP.length) {
   console.warn(
     'WHATSAPP_CONTACTO no está definida: /soporte se sirve sin la vía por la que más ' +
       'escribe la gente. Formato esperado: 573001234567 (internacional, sin signos).'
@@ -66,8 +72,10 @@ function render(archivo) {
     // está disponible en vez de dejar un enlace roto.
     .replace(
       /__WHATSAPP__/g,
-      WHATSAPP
-        ? `<a href="https://wa.me/${WHATSAPP}" rel="noopener">${telefonoLegible(WHATSAPP)}</a>`
+      WHATSAPP.length
+        ? WHATSAPP.map(
+            (n) => `<a href="https://wa.me/${n}" rel="noopener">${telefonoLegible(n)}</a>`
+          ).join('<br>')
         : 'No disponible por ahora. Escríbenos por correo o por Instagram.'
     )
     .replace(/__INSTAGRAM__/g, INSTAGRAM)

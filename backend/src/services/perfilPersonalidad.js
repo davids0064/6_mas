@@ -77,7 +77,7 @@ const TIPOS = [
     titulo: 'Quien rompe el hielo',
     icono: '🔥',
     resumen:
-      'Te mueve la gente nueva y los planes que no conocías. En una mesa de seis sueles ser quien arranca la conversación y propone lo siguiente.',
+      'Te mueve la gente nueva y los planes que no conocías. En una mesa de seis, sueles ser quien inicia la conversación y propone lo siguiente.',
   },
   {
     energiaAlta: true,
