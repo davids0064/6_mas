@@ -448,10 +448,16 @@ export default function GruposScreen({ onValorar, onCuenta, onVerLocal, onVerPer
               <Text style={styles.titulo}>
                 {pasados.length ? 'Buscándote un grupo nuevo ✨' : 'Estamos formando tu grupo ideal ✨'}
               </Text>
+              {/* Es lo primero que se lee al terminar el test, y también lo que
+                  ve quien vuelve a abrir la app mientras espera. Se usa el
+                  primer nombre: el completo suena a carta del banco.
+
+                  Sin perfil cargado todavía se arranca con "Ya aseguraste" en
+                  vez de dejar un hueco o un "undefined" delante de la coma. */}
               <Text style={styles.subtitulo}>
-                {usuario ? `${usuario.nombre.split(' ')[0]}, ya` : 'Ya'} ocupas tu puesto. Formamos
-                el grupo cuando haya seis personas afines en tu ciudad, y entonces te damos el
-                plan ya resuelto: sitio, día y hora.
+                {usuario ? `${usuario.nombre.split(' ')[0]}, ya` : 'Ya'} aseguraste tu puesto en la
+                mesa. Formaremos el grupo cuando identifiquemos a tus otros 5 acompañantes y te
+                enviaremos el plan, sitio, día y hora con instrucciones, solo debes esperar.
               </Text>
 
               {personalidad ? (
