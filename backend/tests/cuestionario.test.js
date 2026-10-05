@@ -29,18 +29,43 @@ test('el cuestionario que hay en la base cumple el contrato', async () => {
   assert.deepStrictEqual(await cuestionario.revisar(), []);
 });
 
-test('trae las 20 preguntas, en orden y con sus opciones', async () => {
+test('el cuestionario llega bien formado y en orden', async () => {
   const preguntas = await cuestionario.cargar();
-  assert.strictEqual(preguntas.length, 20);
-  assert.strictEqual(preguntas[0].id, 'edad', 'la edad va primera');
-  assert.strictEqual(
-    preguntas.reduce((n, p) => n + p.opciones.length, 0),
-    84
-  );
+
+  // No se comprueban cantidades exactas (20 preguntas, 84 opciones) a
+  // propósito. Añadir una opción es ahora un INSERT, que es justamente lo que
+  // se quería conseguir; una prueba que fije el total se rompe cada vez que
+  // alguien hace lo que la migración 006 vino a permitir, y acaba
+  // actualizándose sin leerla. Lo que no puede cambiar es la FORMA.
+  assert.ok(preguntas.length >= 13, 'no puede haber menos preguntas que las del contrato');
+  assert.strictEqual(preguntas[0].id, 'edad', 'la edad sigue siendo la primera');
+
   for (const p of preguntas) {
-    assert.ok(p.opciones.length > 0, `${p.id} se quedó sin opciones`);
     assert.ok(p.texto, `${p.id} sin enunciado`);
+    assert.ok(p.opciones.length > 0, `${p.id} se quedó sin opciones activas`);
+    const valores = p.opciones.map((o) => o.valor);
+    assert.strictEqual(new Set(valores).size, valores.length, `${p.id} tiene valores repetidos`);
+    for (const o of p.opciones) {
+      assert.ok(o.texto, `una opción de ${p.id} se quedó sin texto`);
+    }
   }
+});
+
+test('estado civil ofrece "En una relación" (migración 007)', async () => {
+  // Esta sí fija un valor concreto, porque es contenido de producto que se
+  // pidió explícitamente, no un número que crece solo.
+  const preguntas = await cuestionario.cargar();
+  const estadoCivil = preguntas.find((p) => p.id === 'estado_civil');
+  const enRelacion = estadoCivil.opciones.find((o) => o.valor === 'en_relacion');
+  assert.ok(enRelacion, 'falta la opción en_relacion');
+  assert.strictEqual(enRelacion.texto, 'En una relación');
+  // Va entre "Soltero infeliz" y "Casado", que es donde tiene sentido.
+  const orden = estadoCivil.opciones.map((o) => o.valor);
+  assert.ok(
+    orden.indexOf('en_relacion') > orden.indexOf('soltero_infeliz') &&
+      orden.indexOf('en_relacion') < orden.indexOf('casado'),
+    `orden inesperado: ${orden.join(', ')}`
+  );
 });
 
 test('el contrato se deriva del código, no de una lista escrita a mano', async () => {

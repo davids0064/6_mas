@@ -106,6 +106,7 @@ const PREGUNTAS_RESPALDO = [
     opciones: [
       { valor: 'soltero_feliz', texto: 'Soltero feliz' },
       { valor: 'soltero_infeliz', texto: 'Soltero infeliz' },
+      { valor: 'en_relacion', texto: 'En una relación' },
       { valor: 'casado', texto: 'Casado' },
       { valor: 'divorciado', texto: 'Divorciado' },
       { valor: 'viudo', texto: 'Viudo' },
