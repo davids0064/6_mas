@@ -113,9 +113,22 @@ test('dice qué datos NO se usan para agrupar', async () => {
 test('sin test hecho ofrece hacerlo en vez de un perfil vacío', async () => {
   // El backend responde 204 → null.
   api.obtenerMiPerfilPersonalidad.mockResolvedValue(null);
-  const t = textos(await render({ onRehacerTest: jest.fn() }));
+  const t = textos(await render({ onHacerTest: jest.fn() }));
   expect(t).toContain('Todavía no tienes perfil');
   expect(t).toContain('Hacer el test');
+});
+
+test('con el test ya hecho NO ofrece repetirlo, y explica por qué', async () => {
+  // El test se responde una sola vez: es el dato con el que se decide con quién
+  // se sienta cada persona, y poder repetirlo convertiría el emparejamiento en
+  // algo que se reintenta hasta que sale un grupo que guste. El backend lo
+  // rechaza con 409; esto comprueba que la app tampoco lo ofrezca, y que no se
+  // limite a esconder el botón sin decir nada — un botón que desaparece sin
+  // explicación se lee como una función rota.
+  api.obtenerMiPerfilPersonalidad.mockResolvedValue(PERFIL);
+  const t = textos(await render({ onHacerTest: jest.fn() }));
+  expect(t).not.toMatch(/volver a hacer|repetir el test|rehacer/i);
+  expect(t).toMatch(/una sola vez/i);
 });
 
 test('si el backend falla lo dice y no deja la pantalla en blanco', async () => {

@@ -262,6 +262,11 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
   // carga para algo que ya está en la app— y se reemplaza en cuanto llegue la
   // versión vigente. `version` viaja con las respuestas para poder distinguir
   // después un test contestado con un cuestionario viejo.
+  // La advertencia va ANTES de la primera pregunta y dentro de esta pantalla,
+  // no en la navegación: así ningún camino futuro hacia el test puede
+  // saltársela sin querer.
+  const [empezado, setEmpezado] = useState(false);
+
   const [preguntas, setPreguntas] = useState(PREGUNTAS_RESPALDO);
   const [version, setVersion] = useState(1);
 
@@ -273,7 +278,7 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
         // Solo se adopta si llega algo con sentido y nadie ha empezado a
         // responder: cambiar las preguntas a mitad del test mezclaría dos
         // cuestionarios en un mismo envío.
-        if (!vigente || !d?.preguntas?.length || indice > 0) return;
+        if (!vigente || !d?.preguntas?.length || empezado) return;
         setPreguntas(d.preguntas);
         setVersion(d.version || 1);
       })
@@ -284,7 +289,10 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
     return () => {
       vigente = false;
     };
-    // Solo al montar: el `indice` se lee dentro para no pisar un test empezado.
+    // Solo al montar. `empezado` se lee dentro para no cambiar las preguntas a
+    // mitad del test, que mezclaría dos cuestionarios en un mismo envío; como
+    // la pantalla arranca en la advertencia, hay tiempo de sobra para que
+    // llegue la versión del servidor antes de la primera pregunta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -332,6 +340,35 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
       setEnviando(false);
     }
   };
+
+  if (!empezado) {
+    return (
+      <View style={styles.pantalla}>
+        <EncabezadoMarca titulo="Test de Personalidad" />
+        <ScrollView contentContainerStyle={styles.cuerpoScroll} showsVerticalScrollIndicator={false}>
+          <Animated.View entering={FadeInDown.duration(400)} style={styles.aviso}>
+            <Text style={styles.avisoTitulo}>Son {preguntas.length} preguntas, y se responden una sola vez</Text>
+            <Text style={styles.avisoTexto}>
+              Con tus respuestas decidimos con quién te sentamos. Por eso el test no se puede
+              repetir: si se pudiera, bastaría con reintentarlo hasta caer en el grupo que más
+              guste, y dejaría de medir afinidad.
+            </Text>
+            <Text style={styles.avisoTexto}>
+              No hay respuestas correctas ni mejores que otras, y tampoco se puede volver atrás
+              a cambiar una. Responde con calma lo primero que se te venga.
+            </Text>
+            <TouchableOpacity
+              style={styles.avisoBoton}
+              onPress={() => setEmpezado(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.avisoBotonTexto}>Entendido, empecemos</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.pantalla}>
@@ -398,6 +435,27 @@ const styles = StyleSheet.create({
   },
   motivacion: { ...TIPOGRAFIA.ayuda, color: COLORES.textoTenue, marginTop: ESPACIADO.s },
   cuerpo: { flex: 1 },
+  aviso: { paddingHorizontal: ESPACIADO.s, paddingTop: ESPACIADO.l },
+  avisoTitulo: {
+    ...TIPOGRAFIA.titulo,
+    fontSize: 23,
+    color: COLORES.texto,
+    marginBottom: ESPACIADO.m,
+  },
+  avisoTexto: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.textoSuave,
+    lineHeight: 23,
+    marginBottom: ESPACIADO.m,
+  },
+  avisoBoton: {
+    backgroundColor: COLORES.rojoMarca,
+    borderRadius: RADIOS.boton,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: ESPACIADO.m,
+  },
+  avisoBotonTexto: { ...TIPOGRAFIA.boton, color: COLORES.blanco },
   cuerpoScroll: {
     ...COLUMNA, padding: ESPACIADO.l, paddingTop: ESPACIADO.xl, paddingBottom: ESPACIADO.xl },
   pregunta: { ...TIPOGRAFIA.titulo, color: COLORES.texto, marginBottom: ESPACIADO.l },

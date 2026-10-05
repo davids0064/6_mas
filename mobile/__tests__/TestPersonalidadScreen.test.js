@@ -81,6 +81,9 @@ beforeEach(() => {
   sesion.haySesion.mockReturnValue(true);
 });
 
+// La pantalla arranca en la advertencia de "solo se puede hacer una vez", así
+// que para llegar a las preguntas hay que pasarla. Se hace en un ayudante para
+// que las pruebas de contenido no se llenen de ese paso.
 async function render(props = {}) {
   let arbol;
   await act(async () => {
@@ -89,9 +92,35 @@ async function render(props = {}) {
   return arbol;
 }
 
-test('usa el cuestionario del servidor cuando responde', async () => {
+async function renderYEmpezar(props = {}) {
+  const arbol = await render(props);
+  await act(async () => botonCon(arbol, 'Entendido').props.onPress());
+  return arbol;
+}
+
+test('avisa de que el test se hace una sola vez, antes de la primera pregunta', async () => {
+  // Es lo que el producto promete y lo que el backend hace cumplir con un 409.
+  // Si esta advertencia desapareciera, la regla seguiría existiendo pero la
+  // gente la descubriría al chocar con ella.
   api.obtenerPreguntasTest.mockResolvedValue(DEL_SERVIDOR);
   const t = textoDe(await render());
+  expect(t).toMatch(/una sola vez/i);
+  expect(t).toMatch(/no se puede repetir/i);
+  expect(t).not.toContain('Pregunta 1 de');
+});
+
+test('no se llega a las preguntas sin pasar por la advertencia', async () => {
+  api.obtenerPreguntasTest.mockResolvedValue(DEL_SERVIDOR);
+  const arbol = await render();
+  expect(botonCon(arbol, 'Opción nueva A')).toBeUndefined();
+
+  await act(async () => botonCon(arbol, 'Entendido').props.onPress());
+  expect(botonCon(arbol, 'Opción nueva A')).toBeDefined();
+});
+
+test('usa el cuestionario del servidor cuando responde', async () => {
+  api.obtenerPreguntasTest.mockResolvedValue(DEL_SERVIDOR);
+  const t = textoDe(await renderYEmpezar());
   expect(t).toContain('Pregunta editada desde la base');
   expect(t).toContain('Opción nueva A');
   expect(t).toContain('Pregunta 1 de 1');
@@ -101,14 +130,14 @@ test('sin red sigue funcionando con el cuestionario del binario', async () => {
   // El caso que importa: el servidor no contesta y la pantalla NO se queda en
   // blanco ni muestra un error.
   api.obtenerPreguntasTest.mockRejectedValue(new Error('sin conexión'));
-  const t = textoDe(await render());
+  const t = textoDe(await renderYEmpezar());
   expect(t).toContain('¿Cuál es tu edad?');
   expect(t).toContain('Pregunta 1 de 20');
 });
 
 test('una respuesta vacía del servidor no deja la pantalla sin preguntas', async () => {
   api.obtenerPreguntasTest.mockResolvedValue({ version: 1, preguntas: [] });
-  const t = textoDe(await render());
+  const t = textoDe(await renderYEmpezar());
   expect(t).toContain('¿Cuál es tu edad?');
 });
 
@@ -118,7 +147,7 @@ test('la versión del cuestionario viaja con las respuestas', async () => {
   api.obtenerPreguntasTest.mockResolvedValue(DEL_SERVIDOR);
   api.enviarTestPersonalidad.mockResolvedValue({});
   const onTerminado = jest.fn();
-  const arbol = await render({ onTerminado });
+  const arbol = await renderYEmpezar({ onTerminado });
 
   jest.useFakeTimers();
   await act(async () => botonCon(arbol, 'Opción nueva A').props.onPress());

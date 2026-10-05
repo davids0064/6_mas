@@ -635,12 +635,32 @@ router.post('/yo/test-personalidad', async (req, res, next) => {
     const resultado = perfilPersonalidad.construir(respuestas);
 
     await client.query('BEGIN');
-    // El test anterior deja de ser vigente para respetar el índice único
-    // parcial (usuario_id) WHERE vigente definido en el esquema.
-    await client.query(
-      'UPDATE tests_personalidad SET vigente = FALSE WHERE usuario_id = $1 AND vigente',
+
+    // El test se hace UNA sola vez, y se impide acá y no solo en la app.
+    //
+    // Es el dato con el que se decide con quién se sienta cada persona. Si se
+    // pudiera rehacer, bastaría con reintentarlo hasta caer en un grupo que
+    // guste más, y el emparejamiento dejaría de medir afinidad para medir
+    // insistencia. La app ya lo advierte antes de empezar, pero una advertencia
+    // en una pantalla no es una regla: sin esta comprobación, repetirlo es una
+    // petición HTTP.
+    //
+    // FOR UPDATE bloquea las filas del usuario hasta el commit: dos envíos
+    // simultáneos (un doble toque con la red lenta) leerían los dos que no hay
+    // test previo y crearían dos, y el índice único parcial sobre
+    // (usuario_id) WHERE vigente haría fallar el segundo con un error de
+    // restricción en vez de con este 409, que sí explica qué pasó.
+    const { rows: previos } = await client.query(
+      'SELECT id FROM tests_personalidad WHERE usuario_id = $1 AND vigente FOR UPDATE',
       [req.usuarioId]
     );
+    if (previos[0]) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'El test de personalidad solo se puede hacer una vez.',
+        codigo: 'test_ya_respondido',
+      });
+    }
     const { rows } = await client.query(
       `INSERT INTO tests_personalidad (usuario_id, respuestas, resultado, version_test, vigente)
        VALUES ($1, $2, $3, COALESCE($4, 1), TRUE)

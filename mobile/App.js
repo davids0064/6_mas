@@ -123,10 +123,9 @@ export default function App() {
     return (
       <PerfilScreen
         onVolver={() => setPantalla('grupos')}
-        // Rehacer el test manda a la misma pantalla del registro: al terminar,
-        // el backend marca el anterior como no vigente y calcula el perfil
-        // nuevo, así que volver a Grupos ya muestra el resultado actualizado.
-        onRehacerTest={() => setPantalla('test')}
+        // Solo para quien todavía no lo ha hecho: el test se responde una vez,
+        // y el backend rechaza un segundo envío con 409.
+        onHacerTest={() => setPantalla('test')}
       />
     );
   }

@@ -220,7 +220,9 @@ QUÉ PUEDE HACER (no solo ver)
 
 4. Valorar el plan pasado, desde "Valorar".
 
-5. Rehacer el test de personalidad, desde Tu perfil.
+5. Ver su perfil de personalidad, en "Tu perfil". El test se responde una
+   sola vez —se advierte antes de empezarlo— así que esta cuenta no puede
+   repetirlo; para ver el test, registre una cuenta nueva.
 
 6. Eliminar su cuenta, en Cuenta. Es inmediato; si lo usa, avísenos y la
    reactivamos.

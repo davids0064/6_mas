@@ -61,7 +61,7 @@ function Eje({ eje }) {
   );
 }
 
-export default function PerfilScreen({ onVolver, onRehacerTest }) {
+export default function PerfilScreen({ onVolver, onHacerTest }) {
   const [perfil, setPerfil] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -100,8 +100,9 @@ export default function PerfilScreen({ onVolver, onRehacerTest }) {
                 Son veinte preguntas y no hay respuestas correctas. Con ellas sabemos con quién
                 encajas.
               </Text>
-              {onRehacerTest ? (
-                <TouchableOpacity style={estilos.boton} onPress={onRehacerTest} activeOpacity={0.85}>
+              {/* Este sí se queda: es quien todavía no lo ha hecho nunca. */}
+              {onHacerTest ? (
+                <TouchableOpacity style={estilos.boton} onPress={onHacerTest} activeOpacity={0.85}>
                   <Text style={estilos.botonTexto}>Hacer el test</Text>
                 </TouchableOpacity>
               ) : null}
@@ -138,15 +139,19 @@ export default function PerfilScreen({ onVolver, onRehacerTest }) {
                 </Animated.View>
               ) : null}
 
-              {onRehacerTest ? (
-                <TouchableOpacity
-                  style={estilos.botonSecundario}
-                  onPress={onRehacerTest}
-                  activeOpacity={0.85}
-                >
-                  <Text style={estilos.botonSecundarioTexto}>Volver a hacer el test</Text>
-                </TouchableOpacity>
-              ) : null}
+              {/* Aquí había un "Volver a hacer el test". Se quitó porque el
+                  test se responde una sola vez: es el dato con el que se decide
+                  con quién se sienta cada persona, y poder repetirlo convertía
+                  el emparejamiento en algo que se reintenta hasta que sale un
+                  grupo que guste. El backend lo rechaza con 409 aunque alguien
+                  llame a la API directamente.
+
+                  Se dice en vez de callarlo: un botón que desaparece sin
+                  explicación se lee como una función rota. */}
+              <Text style={estilos.unaVez}>
+                Respondiste este test una sola vez, y así se queda. Es lo que hace que los grupos
+                se formen por afinidad real.
+              </Text>
             </>
           ) : null}
         </ScrollView>
@@ -251,4 +256,12 @@ const estilos = StyleSheet.create({
     marginTop: ESPACIADO.xl,
   },
   botonSecundarioTexto: { ...TIPOGRAFIA.etiqueta, color: COLORES.texto },
+  unaVez: {
+    ...TIPOGRAFIA.ayuda,
+    color: COLORES.textoSuave,
+    textAlign: 'center',
+    marginTop: ESPACIADO.xl,
+    paddingHorizontal: ESPACIADO.m,
+    lineHeight: 19,
+  },
 });
