@@ -59,3 +59,8 @@ dashboard/api/vendor/
 
 # Configuración local de Claude Code (permisos/sesión de esta máquina, no del proyecto)
 .claude/
+
+# Material de diseño y notas de trabajo. El PDF de ajustes pesa 1,2 GB — doce
+# veces el límite de GitHub—, así que la carpeta entera queda fuera del
+# control de versiones en vez de depender de que nadie haga `git add -A`.
+ajustes/

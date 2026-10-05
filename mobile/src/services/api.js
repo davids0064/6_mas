@@ -113,10 +113,14 @@ export const api = {
   // El `resultado` ya no viaja desde acá: lo calcula el backend con las
   // respuestas. Antes se mandaba `null` y se guardaba `null`, así que veinte
   // preguntas no devolvían nada.
-  enviarTestPersonalidad: (respuestas) =>
+  enviarTestPersonalidad: (respuestas, versionTest) =>
     solicitud('/api/usuarios/yo/test-personalidad', {
       method: 'POST',
-      body: { respuestas },
+      // La versión del cuestionario viaja con las respuestas: desde que las
+      // preguntas se editan sin desplegar, un test de hoy puede no ser
+      // comparable con uno de dentro de seis meses, y `version_test` es lo que
+      // permite notarlo.
+      body: { respuestas, version_test: versionTest },
     }),
 
   // Devuelve null (204) si todavía no hizo el test.
@@ -125,6 +129,11 @@ export const api = {
   // --- Catálogos (públicos: los pide el formulario de registro, antes de que
   // exista sesión) ---
   obtenerIntereses: () => solicitud('/api/intereses'),
+
+  // El cuestionario del test. Vive en la base desde la migración 006, así que
+  // un enunciado se puede reescribir sin compilar ni pasar por revisión de
+  // Apple. Devuelve { version, preguntas }.
+  obtenerPreguntasTest: () => solicitud('/api/test/preguntas'),
   obtenerGeneros: () => solicitud('/api/generos'),
 
   guardarMisIntereses: (interesIds) =>

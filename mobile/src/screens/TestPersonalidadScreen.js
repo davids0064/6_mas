@@ -8,7 +8,7 @@
 // cuestionario definitivo se definirá con el equipo); las respuestas viajan
 // como jsonb al backend (POST /api/usuarios/:id/test-personalidad), igual
 // que antes, para no acoplar el esquema a la forma exacta del cuestionario.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import Animated, { FadeInDown, FadeInRight, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { api } from '../services/api';
@@ -16,10 +16,21 @@ import { sesion } from '../services/sesion';
 import EncabezadoMarca from '../components/EncabezadoMarca';
 import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
-// Cuestionario oficial del producto. Las respuestas viajan como jsonb
-// ({ id_pregunta: valor }), así que agregar/quitar preguntas aquí no
-// requiere cambios de esquema en el backend.
-const PREGUNTAS = [
+// Copia de respaldo del cuestionario.
+//
+// Las preguntas ya NO viven aquí: están en la base (migración 006) y la app las
+// pide con GET /api/test/preguntas, para poder reescribir un enunciado o añadir
+// una opción sin compilar ni esperar una revisión de la App Store.
+//
+// Esta copia se queda como red de seguridad para el caso sin red. El test es lo
+// primero que hace alguien después de registrarse, y dejar esa pantalla en
+// blanco porque el servidor no contesta sería peor que servir un cuestionario
+// unos días viejo. Cuando el servidor responde, manda el suyo.
+//
+// Si se edita el cuestionario en la base, esta copia envejece. No pasa nada
+// mientras las CLAVES no cambien, que es justo lo que el backend verifica al
+// arrancar (services/cuestionario.js).
+const PREGUNTAS_RESPALDO = [
   {
     id: 'edad',
     texto: '¿Cuál es tu edad?',
@@ -245,15 +256,46 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
   const [error, setError] = useState(null);
   const progreso = useSharedValue(0);
 
-  const pregunta = PREGUNTAS[indice];
-  const esUltima = indice === PREGUNTAS.length - 1;
+  // El cuestionario se pide al servidor y se arranca con el del binario como
+  // respaldo. Así la primera pregunta se pinta de inmediato —sin pantalla de
+  // carga para algo que ya está en la app— y se reemplaza en cuanto llegue la
+  // versión vigente. `version` viaja con las respuestas para poder distinguir
+  // después un test contestado con un cuestionario viejo.
+  const [preguntas, setPreguntas] = useState(PREGUNTAS_RESPALDO);
+  const [version, setVersion] = useState(1);
+
+  useEffect(() => {
+    let vigente = true;
+    api
+      .obtenerPreguntasTest()
+      .then((d) => {
+        // Solo se adopta si llega algo con sentido y nadie ha empezado a
+        // responder: cambiar las preguntas a mitad del test mezclaría dos
+        // cuestionarios en un mismo envío.
+        if (!vigente || !d?.preguntas?.length || indice > 0) return;
+        setPreguntas(d.preguntas);
+        setVersion(d.version || 1);
+      })
+      .catch(() => {
+        // Sin red se sigue con el respaldo. Es mejor un cuestionario unos días
+        // viejo que una pantalla en blanco justo después de registrarse.
+      });
+    return () => {
+      vigente = false;
+    };
+    // Solo al montar: el `indice` se lee dentro para no pisar un test empezado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pregunta = preguntas[indice];
+  const esUltima = indice === preguntas.length - 1;
 
   const responder = (valor) => {
     if (seleccion) return; // evita doble tap durante el feedback
     setSeleccion(valor);
     const nuevas = { ...respuestas, [pregunta.id]: valor };
     setRespuestas(nuevas);
-    progreso.value = withTiming((indice + 1) / PREGUNTAS.length, { duration: 350 });
+    progreso.value = withTiming((indice + 1) / preguntas.length, { duration: 350 });
 
     setTimeout(() => {
       if (esUltima) {
@@ -273,7 +315,7 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
       // pasar por el registro) no se llama al backend: respondería 401. Se
       // continúa el flujo sin persistir.
       if (sesion.haySesion()) {
-        await api.enviarTestPersonalidad(todas);
+        await api.enviarTestPersonalidad(todas, version);
       } else {
         console.warn('[TestPersonalidad] sin sesión: respuestas no persistidas');
       }
@@ -298,7 +340,7 @@ export default function TestPersonalidadScreen({ navigation, onTerminado }) {
       {/* Contador + barra de progreso dorada. */}
       <Animated.View entering={FadeInDown.duration(400)} style={styles.encabezado}>
         <Text style={styles.contador}>
-          Pregunta {indice + 1} de {PREGUNTAS.length}
+          Pregunta {indice + 1} de {preguntas.length}
         </Text>
         <BarraProgreso progreso={progreso} />
         <Text style={styles.motivacion}>Cada respuesta afina tu grupo ideal ✨</Text>

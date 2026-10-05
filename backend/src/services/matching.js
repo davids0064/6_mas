@@ -323,6 +323,7 @@ function elegirEvento(interesesAgregados, eventos, opciones = {}) {
 module.exports = {
   TAMANO_GRUPO,
   PESOS_RESPUESTAS,
+  CLAVE_LOCALIDAD,
   PESO_INTERESES,
   afinidad,
   afinidadIntereses,
