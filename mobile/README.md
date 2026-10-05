@@ -187,6 +187,33 @@ borrado de cuenta (`__tests__/CuentaScreen.test.js`), la persistencia de la
 sesión (`sesion.test.js`) y la interpretación de la fecha de nacimiento
 (`fechaNacimiento.test.js`).
 
+## Comprobar qué lleva un .ipa
+
+Antes de subir una build conviene verificar que el binario trae de verdad el
+código que crees. El bundle de JavaScript es **bytecode de Hermes**, así que
+`grep` sobre el `.ipa` no sirve y `strings` engaña: solo encuentra las cadenas
+puramente ASCII. Las que llevan una tilde, una eñe o un emoji se guardan en
+UTF-16 y `strings` no las ve — ni con `-el`.
+
+Eso ha dado dos falsas alarmas: una el 16 de septiembre ("la build no lleva los
+cambios", y sí los llevaba) y otra el 5 de octubre. Buscar los bytes en las dos
+codificaciones sí funciona:
+
+```bash
+unzip -q mobile/ios/build/SeisMas.ipa -d /tmp/ipa
+python3 - /tmp/ipa/Payload/SeisMas.app/main.jsbundle <<'EOF'
+import sys
+d = open(sys.argv[1], 'rb').read()
+for t in ['aseguraste tu puesto', 'Escribir al grupo']:
+    print(t, bool(d.count(t.encode('utf-8')) or d.count(t.encode('utf-16-le'))))
+EOF
+```
+
+Dos comprobaciones que no mienten y cuestan nada: la **fecha del
+`main.jsbundle`** dentro del `.app` tiene que ser posterior a la del último
+fuente tocado, y una cadena del cambio que sea **solo ASCII** se encuentra con
+`strings` sin complicaciones.
+
 ## Publicar en la App Store
 
 ### Lo que ya está resuelto en el repo

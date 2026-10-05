@@ -111,8 +111,31 @@ conocer gente,amigos,planes,grupo,social,restaurantes,cena,salir,afinidad,bogota
 
 ## Novedades de esta versión
 
-Primera versión: en 1.0 este campo no se muestra y App Store Connect lo deja
-vacío. Para la 1.1 en adelante, describir cambios concretos.
+En 1.0 este campo no se mostraba. Desde la 1.0.1 sí, y es lo primero que lee
+quien ya tiene la app instalada.
+
+### 1.0.1
+
+```
+Esta versión es sobre todo claridad.
+
+· Tu perfil se ve mejor y explica para qué sirve: es el criterio con el que te
+  sentamos con cinco personas, no una etiqueta. Los tipos ahora están escritos
+  en forma neutra.
+
+· Te decimos antes de empezar que el test de personalidad se responde una sola
+  vez, en lugar de que lo descubras al intentar repetirlo.
+
+· Al terminar el test ya sabes qué sigue y qué tienes que hacer mientras tanto.
+
+· Añadimos "En una relación" al estado civil. Faltaba.
+
+· Nuevo apartado de contacto: WhatsApp, correo e Instagram, y una página de
+  preguntas frecuentes.
+```
+
+Caracteres: 598 de 4000. Sin promesas de funciones futuras, que es motivo de
+rechazo por guideline 2.3.
 
 ## Campos que no son texto
 
