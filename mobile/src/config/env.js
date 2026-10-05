@@ -65,6 +65,24 @@ export const PLATAFORMA = Platform.OS;
 export const URL_POLITICA_PRIVACIDAD = `${URL_PRODUCCION}/privacidad`;
 export const URL_TERMINOS = `${URL_PRODUCCION}/terminos`;
 
+// Página de soporte: las vías de contacto y las preguntas que más llegan. Es
+// además la URL de soporte que App Store Connect exige para publicar, y tiene
+// que ser la misma que enlaza la app.
+export const URL_SOPORTE = `${URL_PRODUCCION}/soporte`;
+
+// --- Contacto directo --------------------------------------------------------
+//
+// Van aquí y no se piden al backend porque la pantalla de Cuenta tiene que
+// poder mostrarlos aunque la API no responda: quien busca soporte muchas veces
+// lo busca justamente porque algo no funciona.
+//
+// El número va en formato internacional sin signos, que es lo que espera wa.me.
+// Vacío = no se pinta esa opción, en vez de dejar un enlace que no lleva a
+// ningún lado.
+export const WHATSAPP = '';
+export const INSTAGRAM = 'https://www.instagram.com/somos6mas/';
+export const EMAIL_CONTACTO = 'hola@seismas.app';
+
 // Apuntar una build de debug al backend desplegado (para probar contra datos
 // reales sin compilar en release) es cambiar esta línea por
 // `export const API_BASE_URL = URL_PRODUCCION;` — a sabiendas de que entonces

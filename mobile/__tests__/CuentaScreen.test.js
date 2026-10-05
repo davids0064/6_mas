@@ -16,6 +16,7 @@
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { Linking, TouchableOpacity } from 'react-native';
 
 import CuentaScreen from '../src/screens/CuentaScreen';
 import { api } from '../src/services/api';
@@ -155,4 +156,45 @@ test('cerrar sesión limpia la sesión sin borrar la cuenta', async () => {
   expect(api.cerrarSesion).toHaveBeenCalledTimes(1);
   expect(api.eliminarMiCuenta).not.toHaveBeenCalled();
   expect(onSesionCerrada).toHaveBeenCalledTimes(1);
+});
+
+
+// --- Contacto (punto 6 de los ajustes) -------------------------------------
+//
+// Quien entra a esta pantalla suele venir con una duda o un problema, no a
+// releer los términos. Lo que se prueba es que las vías existan y que una vía
+// sin configurar NO se pinte: un enlace de WhatsApp sin número abre una
+// pantalla de error de la propia app de WhatsApp, que es peor que no ofrecerlo.
+
+test('ofrece correo, Instagram y las preguntas frecuentes', async () => {
+  api.obtenerMiPerfil.mockResolvedValue(PERFIL);
+  const t = textos(await montar());
+  expect(t).toContain('hola@seismas.app');
+  expect(t).toContain('somos6mas');
+  expect(t).toContain('Preguntas frecuentes');
+});
+
+test('sin número configurado, WhatsApp no aparece', async () => {
+  // WHATSAPP está vacío en config/env.js hasta que se fije el número real.
+  api.obtenerMiPerfil.mockResolvedValue(PERFIL);
+  expect(textos(await montar())).not.toContain('WhatsApp');
+});
+
+test('los enlaces de contacto abren lo que deben', async () => {
+  api.obtenerMiPerfil.mockResolvedValue(PERFIL);
+  const abiertos = [];
+  jest.spyOn(Linking, 'openURL').mockImplementation((u) => {
+    abiertos.push(u);
+    return Promise.resolve();
+  });
+  const arbol = await montar();
+
+  for (const frase of ['hola@seismas.app', 'somos6mas', 'Preguntas frecuentes']) {
+    await act(async () => botonConTexto(arbol, frase).props.onPress());
+  }
+
+  expect(abiertos[0]).toBe('mailto:hola@seismas.app');
+  expect(abiertos[1]).toBe('https://www.instagram.com/somos6mas/');
+  expect(abiertos[2]).toMatch(/\/soporte$/);
+  Linking.openURL.mockRestore();
 });

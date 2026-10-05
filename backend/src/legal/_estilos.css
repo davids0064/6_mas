@@ -54,3 +54,31 @@ footer {
   color: var(--gris);
   font-size: 14px;
 }
+
+/* Página de soporte. Los documentos legales solo usan h1/h2; aquí hacen falta
+   h3 para las preguntas frecuentes y una lista de contacto que se lea de un
+   vistazo, porque quien abre esta página suele tener prisa o un problema. */
+h3 {
+  font-size: 17px;
+  margin: 28px 0 6px;
+  color: var(--negro);
+}
+ul.contacto {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 8px;
+}
+ul.contacto li {
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--rojo);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+ul.contacto strong {
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gris);
+}

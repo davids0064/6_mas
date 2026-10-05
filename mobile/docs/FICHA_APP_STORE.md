@@ -123,7 +123,7 @@ vacío. Para la 1.1 en adelante, describir cambios concretos.
 | Clasificación por edad | 17+ | Encuentros presenciales entre desconocidos |
 | **Contenido generado por usuarios** | **Sí** | **Ver abajo: causó dos rechazos seguidos** |
 | URL de política de privacidad | `https://api-production-2a3c5.up.railway.app/privacidad` | Tiene que ser exactamente la que enlaza la app |
-| URL de soporte | pendiente | Apple la exige; hoy no hay ninguna |
+| URL de soporte | `https://api-production-2a3c5.up.railway.app/soporte` | **Ya existe.** Vías de contacto y preguntas frecuentes |
 | Copyright | `2026 David Salamanca` | |
 
 ### La pregunta de contenido generado por usuarios
@@ -148,8 +148,12 @@ puede exigir volver a enviar la versión. Hay que comprobar que la app quede en
 
 ## Lo que todavía falta para enviar
 
-- **URL de soporte.** Es obligatoria y no existe. Lo más barato es añadir una
-  ruta `/soporte` al backend, al lado de `/privacidad` y `/terminos`.
+- **El número de WhatsApp.** La página de soporte ya existe y enlaza correo e
+  Instagram, pero la vía por la que más escribe la gente sigue sin configurar.
+  Se activa con `railway variables --service api --set WHATSAPP_CONTACTO=57…`
+  (internacional, sin signos) y poniendo el mismo número en
+  `mobile/src/config/env.js`. Sin él, ese bloque dice "No disponible por ahora"
+  en vez de dejar un enlace roto.
 - **Nutrition labels**, que deben coincidir con `ios/SeisMas/PrivacyInfo.xcprivacy`.
 
 ## Información de inicio de sesión (para la revisión)

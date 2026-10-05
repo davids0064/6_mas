@@ -23,7 +23,14 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { api } from '../services/api';
-import { URL_POLITICA_PRIVACIDAD, URL_TERMINOS } from '../config/env';
+import {
+  EMAIL_CONTACTO,
+  INSTAGRAM,
+  URL_POLITICA_PRIVACIDAD,
+  URL_SOPORTE,
+  URL_TERMINOS,
+  WHATSAPP,
+} from '../config/env';
 import EncabezadoMarca from '../components/EncabezadoMarca';
 import { COLORES, TIPOGRAFIA, ESPACIADO, RADIOS, COLUMNA } from '../theme/tokens';
 
@@ -87,6 +94,50 @@ export default function CuentaScreen({ onVolver, onSesionCerrada }) {
                 <Text style={styles.dato}>{usuario.email}</Text>
               </View>
             ) : null}
+
+            {/* Contacto. Va antes que los documentos legales a propósito:
+                quien entra a esta pantalla suele venir con una duda o un
+                problema, no a releer los términos.
+
+                Cada vía se pinta solo si está configurada. Un enlace de
+                WhatsApp sin número abre una pantalla de error de la propia
+                app de WhatsApp, que es peor que no ofrecerlo. */}
+            <View style={styles.tarjeta}>
+              <Text style={styles.etiqueta}>¿DUDAS O ALGO QUE CONTARNOS?</Text>
+
+              {WHATSAPP ? (
+                <>
+                  <TouchableOpacity onPress={() => abrir(`https://wa.me/${WHATSAPP}`)}>
+                    <Text style={styles.enlace}>💬 Escríbenos por WhatsApp</Text>
+                  </TouchableOpacity>
+                  <View style={styles.divisor} />
+                </>
+              ) : null}
+
+              {EMAIL_CONTACTO ? (
+                <>
+                  <TouchableOpacity onPress={() => abrir(`mailto:${EMAIL_CONTACTO}`)}>
+                    <Text style={styles.enlace}>✉️ {EMAIL_CONTACTO}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.divisor} />
+                </>
+              ) : null}
+
+              {INSTAGRAM ? (
+                <>
+                  <TouchableOpacity onPress={() => abrir(INSTAGRAM)}>
+                    <Text style={styles.enlace}>
+                      📷 @{INSTAGRAM.replace(/\/+$/, '').split('/').pop()}
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={styles.divisor} />
+                </>
+              ) : null}
+
+              <TouchableOpacity onPress={() => abrir(URL_SOPORTE)}>
+                <Text style={styles.enlace}>Preguntas frecuentes</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.tarjeta}>
               <TouchableOpacity onPress={() => abrir(URL_POLITICA_PRIVACIDAD)}>
