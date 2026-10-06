@@ -74,7 +74,7 @@ async function cargarIncompatibles(cliente) {
  * `comercio_planes` ni `comercio_disponibilidad`, y no debe tenerlo.
  */
 async function cargarOferta(cliente) {
-  const [ofertas, franjas, ocupacion, publicados, anfitriones] = await Promise.all([
+  const [ofertas, franjas, ocupacion, publicados, anfitriones, cupos] = await Promise.all([
     cliente.query('SELECT * FROM v_oferta_comercio WHERE capacidad >= $1', [matching.TAMANO_GRUPO]),
     cliente.query('SELECT * FROM v_disponibilidad_comercio'),
     // Ocupación = eventos futuros vivos. Se cuentan también los que ya tienen
@@ -92,6 +92,10 @@ async function cargarOferta(cliente) {
     cliente.query(
       'SELECT id, comercio_id, titular FROM anfitriones WHERE deleted_at IS NULL ORDER BY titular DESC'
     ),
+    // Cupo de la afiliación: cuántos grupos más puede recibir cada comercio en
+    // el periodo que está pagando. Un comercio sin suscripción vigente no
+    // aparece en esta vista, y eso es exactamente lo que tiene que pasarle.
+    cliente.query('SELECT comercio_id, grupos_disponibles FROM v_cupo_comercio'),
   ]);
 
   const anfitrionPorComercio = new Map();
@@ -99,11 +103,26 @@ async function cargarOferta(cliente) {
     if (!anfitrionPorComercio.has(a.comercio_id)) anfitrionPorComercio.set(a.comercio_id, a.id);
   }
 
+  // Quién tiene cupo para recibir un grupo más. Se filtra acá y no dentro de
+  // v_oferta_comercio a propósito: si la vista escondiera la oferta, un
+  // comercio desaparecería del emparejamiento sin que quede dónde mirar por
+  // qué. Acá se puede contar y explicar.
+  const conCupo = new Set(
+    cupos.rows.filter((c) => Number(c.grupos_disponibles) > 0).map((c) => c.comercio_id)
+  );
+
+  const puedeRecibir = (comercioId) =>
+    anfitrionPorComercio.has(comercioId) && conCupo.has(comercioId);
+
   return {
-    ofertas: ofertas.rows.filter((o) => anfitrionPorComercio.has(o.comercio_id)),
+    ofertas: ofertas.rows.filter((o) => puedeRecibir(o.comercio_id)),
     franjasPorComercio: programacion.indexarPorComercio(franjas.rows),
     ocupacionPorComercio: programacion.indexarPorComercio(ocupacion.rows),
-    publicados: publicados.rows,
+    // Los eventos publicados a mano por el comercio pasan por el mismo filtro.
+    // Sin esto, el cupo se salta publicando eventos desde la app de comercios:
+    // lo que se contrata es cuántos grupos se reciben, no por qué camino
+    // llegaron.
+    publicados: publicados.rows.filter((e) => puedeRecibir(e.comercio_id)),
     anfitrionPorComercio,
   };
 }
