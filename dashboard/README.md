@@ -315,6 +315,41 @@ microcopy en tono cercano ("Cuéntale a los grupos de qué se trata tu lugar", n
 > la ilustración* `home_1.png` (azul `#315699`, naranja `#F79547`, índigo `#232456`), que son de
 > esa pieza gráfica y no de la identidad corporativa. El dashboard ya está corregido; el móvil
 > sigue con la paleta anterior. Habría que decidir si se alinea.
+## Dar de alta o renovar una afiliación
+
+El cobro va por transferencia y lo gestiona una persona. Para que registrarlo no
+sea escribir un INSERT a mano —con el `plan_id` correcto, el cupo congelado y
+las fechas calculadas, tres sitios donde equivocarse cuesta dinero— hay una
+función que lo hace sola:
+
+```sql
+-- comercio, plan, meses, monto, referencia de la transferencia, quién lo registra
+SELECT * FROM activar_suscripcion(
+  'ded00000-0000-4000-8000-000000000020', 'plata', 3, 450000, 'TRF-99812', 'Laura'
+);
+```
+
+Devuelve el periodo que creó. Qué resuelve sola:
+
+- busca el plan por **nombre**, que es lo que la persona tiene en la cabeza, y
+  si no existe falla diciendo cuáles hay;
+- **congela** el cupo del tier en el alta, para que subir bronce de 2 a 3 no le
+  cambie las condiciones a quien ya pagó;
+- **encadena** el periodo justo después del vigente, sin dejar un día sin cupo
+  ni chocar con la restricción de solapamiento;
+- registra el pago en la **misma transacción**: si falla, no queda una
+  suscripción activa sin su cobro.
+
+La referencia de la transferencia tiene índice único, así que el mismo pago no
+se puede registrar dos veces — que es el error más caro al hacerlo a mano.
+
+Sin monto, no inventa un pago: sirve para activar de cortesía sin dejar un cobro
+fantasma en la contabilidad.
+
+**Quién lo ejecuta**: `seis_dashboard`, por SSH a Postgres o desde DBeaver. No
+hay ruta en la API a propósito — es una operación de dinero que hace una persona
+mirando una transferencia, no algo que deba poder dispararse por HTTP.
+
 ## Mantenimiento: vencer las suscripciones
 
 Las suscripciones de comercio tienen un periodo con fecha de fin, y el estado

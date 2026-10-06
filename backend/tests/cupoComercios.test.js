@@ -13,6 +13,11 @@ const db = require('../src/config/db');
 
 const creados = { comercios: [], suscripciones: [], eventos: [] };
 
+// Sufijo de la corrida. El índice único sobre `comercio_pagos.referencia` es
+// global, así que una referencia constante dejaría la segunda ejecución
+// fallando por el residuo de la primera.
+const SUF = Date.now();
+
 async function comercioNuevo(tier = 'bronce') {
   const { rows } = await db.query(
     `INSERT INTO comercios (nombre, email, ciudad, activo, plan_id)
@@ -64,6 +69,18 @@ const cupoDe = async (comercioId) =>
 
 test.after(async () => {
   if (creados.comercios.length) {
+    // Los pagos van primero: comercio_pagos referencia a las suscripciones con
+    // ON DELETE RESTRICT, así que borrar el comercio en cascada choca contra
+    // ellos. Y está bien que choque — un registro contable no debería
+    // desaparecer porque alguien borró una fila de otra tabla— pero la limpieza
+    // de las pruebas tiene que respetarlo.
+    await db.query(
+      `DELETE FROM comercio_pagos
+        WHERE suscripcion_id IN (
+          SELECT id FROM comercio_suscripciones WHERE comercio_id = ANY($1)
+        )`,
+      [creados.comercios]
+    );
     await db.query('DELETE FROM comercios WHERE id = ANY($1)', [creados.comercios]);
   }
   await db.query("DELETE FROM grupos WHERE nombre IS NULL AND estado = 'activo' AND NOT EXISTS (SELECT 1 FROM grupo_miembros gm WHERE gm.grupo_id = grupos.id)");
@@ -230,4 +247,94 @@ test('tras correr el trabajo no queda nada pendiente de vencer', async () => {
     'SELECT count(*)::int AS n FROM v_suscripcion_estado WHERE pendiente_de_vencer'
   );
   assert.strictEqual(rows[0].n, 0);
+});
+
+
+// ============================================================================
+// Alta y renovación (migración 010).
+//
+// Las referencias llevan el sufijo de la corrida: el índice único sobre
+// `referencia` es global, así que una constante dejaría la segunda ejecución
+// fallando por el residuo de la primera.
+//
+// El cobro va por transferencia y lo registra una persona. Si esa persona tiene
+// que escribir el INSERT a mano, antes o después se equivoca en el cupo o en
+// las fechas, y el comercio recibe de más o de menos sin que nadie lo note.
+// ============================================================================
+
+const activar = async (comercioId, plan, meses = 1, monto = null, ref = null) =>
+  (
+    await db.query('SELECT * FROM activar_suscripcion($1, $2, $3, $4, $5, $6)', [
+      comercioId, plan, meses, monto, ref, 'prueba',
+    ])
+  ).rows[0];
+
+test('activar congela el cupo del tier y calcula el periodo', async () => {
+  const c = await comercioNuevo();
+  const r = await activar(c, 'plata', 1);
+  assert.strictEqual(r.cupo, 4, 'plata son 4 grupos');
+  // `fin` es inclusivo: un mes desde hoy llega a la víspera, no al mismo día.
+  const dias = Math.round((new Date(r.hasta) - new Date(r.desde)) / 86400000);
+  assert.ok(dias >= 27 && dias <= 30, `el periodo dura ${dias} días`);
+});
+
+test('renovar encadena sin huecos ni solapes', async () => {
+  const c = await comercioNuevo();
+  const primera = await activar(c, 'bronce', 1);
+  const segunda = await activar(c, 'gold', 2);
+
+  const siguiente = new Date(primera.hasta);
+  siguiente.setDate(siguiente.getDate() + 1);
+  assert.strictEqual(
+    new Date(segunda.desde).toISOString().slice(0, 10),
+    siguiente.toISOString().slice(0, 10),
+    'el periodo nuevo empieza al día siguiente del anterior'
+  );
+  assert.strictEqual(segunda.cupo, 6, 'y con el cupo del plan nuevo');
+});
+
+test('el pago queda registrado en la misma transacción', async () => {
+  const c = await comercioNuevo();
+  const r = await activar(c, 'bronce', 1, 150000, `TRF-${SUF}-1`);
+  const { rows } = await db.query('SELECT * FROM comercio_pagos WHERE suscripcion_id = $1', [
+    r.id_suscripcion,
+  ]);
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(Number(rows[0].monto), 150000);
+  assert.strictEqual(rows[0].metodo, 'transferencia');
+});
+
+test('sin monto no se inventa un pago', async () => {
+  // Activar de cortesía no puede dejar un cobro fantasma en la contabilidad.
+  const c = await comercioNuevo();
+  const r = await activar(c, 'bronce', 1);
+  const { rows } = await db.query(
+    'SELECT count(*)::int AS n FROM comercio_pagos WHERE suscripcion_id = $1',
+    [r.id_suscripcion]
+  );
+  assert.strictEqual(rows[0].n, 0);
+});
+
+test('un plan que no existe falla diciendo cuáles hay', async () => {
+  const c = await comercioNuevo();
+  await assert.rejects(() => activar(c, 'diamante', 1), /No existe el plan.*bronce/s);
+});
+
+test('no se puede activar un comercio que no existe', async () => {
+  await assert.rejects(
+    () => activar('00000000-0000-4000-8000-000000000000', 'bronce', 1),
+    /No existe el comercio/
+  );
+});
+
+test('la misma referencia de transferencia no se registra dos veces', async () => {
+  // Protege del error más caro al registrar a mano: cobrar dos veces el mismo
+  // pago porque alguien dudó de si ya lo había metido.
+  const c = await comercioNuevo();
+  await activar(c, 'bronce', 1, 150000, `TRF-${SUF}-rep`);
+  const otro = await comercioNuevo();
+  await assert.rejects(
+    () => activar(otro, 'bronce', 1, 150000, `TRF-${SUF}-rep`),
+    /duplicate key/i
+  );
 });

@@ -67,6 +67,11 @@ export const api = {
   // en otro servidor (ver ResumenController).
   obtenerResumen: () => solicitud('/resumen'),
 
+  // La afiliación con su detalle: el plan, en qué se fue el cupo y qué da cada
+  // plan. Solo lectura: el cobro va por transferencia y lo gestiona una
+  // persona, así que no hay nada que la app pueda escribir.
+  obtenerAfiliacion: () => solicitud('/afiliacion'),
+
   // --- Perfil del comercio ---
   // No hay /comercios/{id}: el id sale del token, así que no existe ninguna
   // ruta donde cambiar un id en la URL dé acceso a otro negocio.

@@ -87,7 +87,7 @@ export default function ResumenScreen({ onVerEvento, onIrA, onCuenta }) {
         {/* La afiliación va primero porque decide si llega algo: un local con
             el perfil completo y la suscripción vencida no recibe ni un grupo, y
             sin esto no tendría dónde enterarse. */}
-        <TarjetaAfiliacion afiliacion={resumen?.afiliacion} />
+        <TarjetaAfiliacion afiliacion={resumen?.afiliacion} onVer={() => onIrA('afiliacion')} />
 
         {/* Hoy. Solo aparece si hay algo: una tarjeta vacía que diga "nada hoy"
             ocuparía el sitio más valioso de la pantalla para no decir nada. */}
@@ -172,16 +172,20 @@ export default function ResumenScreen({ onVerEvento, onIrA, onCuenta }) {
  * Las bolitas en vez de una barra: con 2 o 6 grupos, contar círculos se lee de
  * un vistazo y una barra al 83% no dice nada.
  */
-function TarjetaAfiliacion({ afiliacion }) {
+function TarjetaAfiliacion({ afiliacion, onVer }) {
   if (!afiliacion) {
     return (
-      <View style={[styles.afiliacion, styles.afiliacionAlerta]}>
+      <TouchableOpacity
+        style={[styles.afiliacion, styles.afiliacionAlerta]}
+        onPress={onVer}
+        activeOpacity={0.85}
+      >
         <Text style={styles.afiliacionEtiqueta}>TU AFILIACIÓN</Text>
         <Text style={styles.afiliacionTituloAlerta}>No está vigente</Text>
         <Text style={styles.afiliacionTexto}>
-          No estás recibiendo grupos. Escríbenos para activarla.
+          No estás recibiendo grupos. Toca para activarla.
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   }
 
@@ -189,7 +193,11 @@ function TarjetaAfiliacion({ afiliacion }) {
   const agotado = libres === 0;
 
   return (
-    <View style={[styles.afiliacion, agotado && styles.afiliacionAgotada]}>
+    <TouchableOpacity
+      style={[styles.afiliacion, agotado && styles.afiliacionAgotada]}
+      onPress={onVer}
+      activeOpacity={0.85}
+    >
       <View style={styles.afiliacionFila}>
         <Text style={styles.afiliacionEtiqueta}>TU AFILIACIÓN</Text>
         <Text style={styles.afiliacionPlan}>{String(plan).toUpperCase()}</Text>
@@ -212,7 +220,8 @@ function TarjetaAfiliacion({ afiliacion }) {
           ? `Tu cupo de ${total} ${total === 1 ? 'grupo' : 'grupos'} se renueva ${enDias(dias)}.`
           : `${total - libres} de ${total} usados · renueva ${enDias(dias)}`}
       </Text>
-    </View>
+      <Text style={styles.afiliacionEnlace}>Ver detalle →</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -315,6 +324,7 @@ const styles = StyleSheet.create({
   afiliacionTitulo: { ...TIPOGRAFIA.etiqueta, fontSize: 18, color: COLORES.texto, marginTop: 4 },
   afiliacionTituloAlerta: { ...TIPOGRAFIA.etiqueta, fontSize: 18, color: COLORES.error, marginTop: 4 },
   afiliacionTexto: { ...TIPOGRAFIA.ayuda, color: COLORES.textoSuave, marginTop: 6 },
+  afiliacionEnlace: { ...TIPOGRAFIA.ayuda, color: COLORES.rojoMarca, fontWeight: '700', marginTop: 8 },
   bolitas: { flexDirection: 'row', marginTop: ESPACIADO.s },
   bolita: {
     width: 14,

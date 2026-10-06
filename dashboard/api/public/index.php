@@ -8,6 +8,7 @@
 
 declare(strict_types=1);
 
+use SeisMas\Controllers\AfiliacionController;
 use SeisMas\Controllers\AnfitrionController;
 use SeisMas\Controllers\AuthController;
 use SeisMas\Controllers\CatalogoController;
@@ -105,6 +106,7 @@ $franja    = new DisponibilidadController();
 $catalogo  = new CatalogoController();
 $legal     = new LegalController();
 $manten    = new MantenimientoController();
+$afiliacion = new AfiliacionController();
 
 // Sondeo de salud: sin autenticación, para que el hosting o Railway puedan
 // verificar que el proceso responde.
@@ -141,6 +143,10 @@ $protegida = static fn (callable $accion): callable
 
 $router->get('/resumen',     $protegida(static fn () => $resumen->ver()));
 $router->get('/mi-comercio', $protegida(static fn () => $comercio->ver()));
+
+// La afiliación es solo lectura: el cobro va por transferencia y lo gestiona
+// una persona, así que no hay nada que la app pueda escribir acá.
+$router->get('/afiliacion',  $protegida(static fn () => $afiliacion->ver()));
 $router->put('/mi-comercio', $protegida(static fn () => $comercio->actualizar()));
 // Baja de la cuenta del propio comercio. Exigida por la App Store para poder
 // publicar la app de comercios (guideline 5.1.1(v)).

@@ -72,3 +72,13 @@ export const API_BASE_URL = ES_PRODUCCION ? URL_PRODUCCION : urlDeDesarrollo();
 // `localhost/privacidad` mostraría un enlace roto en el simulador.
 export const URL_POLITICA_PRIVACIDAD = `${URL_PRODUCCION}/privacidad`;
 export const URL_TERMINOS = `${URL_PRODUCCION}/terminos`;
+
+// --- Contacto ----------------------------------------------------------------
+//
+// Por aquí se acuerda la afiliación: el pago va por transferencia y lo gestiona
+// una persona, así que la app no cobra nada — remite a hablar con alguien.
+//
+// El número va en formato internacional sin signos, que es lo que espera wa.me.
+// Vacío = esa vía no se ofrece, en vez de dejar un enlace que no lleva a nada.
+export const WHATSAPP = '573004412005';
+export const EMAIL_CONTACTO = 'holaseismas@pulsodigital.co';

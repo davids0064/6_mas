@@ -27,6 +27,7 @@ import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import LoginScreen from './src/screens/LoginScreen';
 import RegistroScreen from './src/screens/RegistroScreen';
 import ResumenScreen from './src/screens/ResumenScreen';
+import AfiliacionScreen from './src/screens/AfiliacionScreen';
 import EventosScreen from './src/screens/EventosScreen';
 import EventoDetalleScreen from './src/screens/EventoDetalleScreen';
 import PlanesScreen from './src/screens/PlanesScreen';
@@ -141,6 +142,9 @@ export default function App() {
         }}
       />
     );
+  }
+  if (pantalla === 'afiliacion') {
+    return <AfiliacionScreen onVolver={() => setPantalla('resumen')} />;
   }
   if (pantalla === 'mi-comercio') {
     return <MiComercioScreen onVolver={irAResumen} />;
