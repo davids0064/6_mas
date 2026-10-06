@@ -15,6 +15,7 @@ use SeisMas\Controllers\ComercioController;
 use SeisMas\Controllers\DisponibilidadController;
 use SeisMas\Controllers\EventoController;
 use SeisMas\Controllers\LegalController;
+use SeisMas\Controllers\MantenimientoController;
 use SeisMas\Controllers\MenuController;
 use SeisMas\Controllers\PlanController;
 use SeisMas\Controllers\PropuestaController;
@@ -103,6 +104,7 @@ $plan      = new PlanController();
 $franja    = new DisponibilidadController();
 $catalogo  = new CatalogoController();
 $legal     = new LegalController();
+$manten    = new MantenimientoController();
 
 // Sondeo de salud: sin autenticación, para que el hosting o Railway puedan
 // verificar que el proceso responde.
@@ -115,6 +117,14 @@ $router->post('/auth/login',    static fn () => $auth->login());
 // Documentos legales. Públicos y sin token a propósito: Apple los abre desde
 // App Store Connect, sin sesión y sin haber instalado la app. Devuelven HTML,
 // no JSON, y son los únicos de esta API que lo hacen.
+// --- Mantenimiento ---
+// No son de ningún comercio sino del sistema, así que van detrás de la clave de
+// administración (cabecera X-Admin-Key) y no del token de sesión. Cada
+// controlador la exige por su cuenta: con un middleware global habría que
+// mantener una lista de excepciones que se puede desincronizar.
+$router->post('/admin/vencer-suscripciones', static fn () => $manten->vencerSuscripciones());
+$router->get('/admin/suscripciones',         static fn () => $manten->suscripciones());
+
 $router->get('/privacidad',        static fn () => $legal->privacidad());
 $router->get('/terminos',          static fn () => $legal->terminos());
 $router->get('/legal/estilos.css', static fn () => $legal->estilos());

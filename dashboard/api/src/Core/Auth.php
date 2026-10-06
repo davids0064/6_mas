@@ -17,6 +17,32 @@ class Auth
     private static ?array $payload = null;
 
     /**
+     * Exige la clave de administración, para las rutas que no son de ningún
+     * comercio sino del sistema (mantenimiento, trabajos programados).
+     *
+     * Sin ADMIN_API_KEY configurada estas rutas quedan CERRADAS, no abiertas:
+     * un despliegue al que se le olvidó la variable debe perder la función de
+     * administración, nunca exponerla a internet. Es la misma decisión que
+     * toma el backend de Node en middleware/auth.js.
+     */
+    public static function exigirAdmin(): void
+    {
+        $esperada = (string) (getenv('ADMIN_API_KEY') ?: '');
+        if ($esperada === '') {
+            Response::error('Administración no configurada en este servidor.', 503);
+        }
+
+        $recibida = (string) (Request::cabecera('X-Admin-Key') ?? '');
+
+        // hash_equals compara en tiempo constante. Con == el tiempo de
+        // respuesta depende de cuántos caracteres coinciden desde el principio,
+        // y eso permite adivinar la clave carácter a carácter.
+        if (!hash_equals($esperada, $recibida)) {
+            Response::error('No autorizado.', 401);
+        }
+    }
+
+    /**
      * Exige un token válido. Corta con 401 si falta o no verifica.
      * Devuelve el payload del token.
      */

@@ -154,3 +154,80 @@ test('sí se puede dejar contratado el periodo siguiente', async () => {
   await suscribir(c, { grupos: 2, dias: 30 });
   await assert.doesNotReject(() => suscribir(c, { grupos: 4, dias: 30, desde: 31 }));
 });
+
+
+// ============================================================================
+// Vencimiento (migración 009).
+//
+// La propiedad que estas pruebas protegen no es "el trabajo marca las filas",
+// sino la contraria: que NO haga falta que corra. Un proceso nocturno que falle
+// un día no puede dejar al sistema mandando grupos a quien ya no paga.
+// ============================================================================
+
+const estadoDe = async (suscripcionId) =>
+  (await db.query('SELECT * FROM v_suscripcion_estado WHERE id = $1', [suscripcionId])).rows[0];
+
+test('una suscripción caducada no da cupo AUNQUE nadie haya corrido el trabajo', async () => {
+  // Es la garantía que sostiene todo lo demás: la corrección vive en la vista,
+  // no en que algo se ejecute a las 3 de la mañana.
+  const c = await comercioNuevo();
+  const s = await suscribir(c, { grupos: 2, dias: 10, desde: -40 });
+
+  const estado = await estadoDe(s);
+  assert.strictEqual(estado.estado, 'activa', 'el estado guardado todavía miente');
+  assert.strictEqual(estado.estado_efectivo, 'vencida', 'pero el efectivo ya es el correcto');
+  assert.strictEqual(await cupoDe(c), undefined, 'y no da cupo');
+});
+
+test('el estado efectivo distingue futura, vigente y vencida', async () => {
+  const casos = [
+    [{ desde: 10, dias: 20 }, 'futura'],
+    [{ desde: 0, dias: 20 }, 'vigente'],
+    [{ desde: -40, dias: 10 }, 'vencida'],
+  ];
+  for (const [opciones, esperado] of casos) {
+    const c = await comercioNuevo();
+    const s = await suscribir(c, { grupos: 2, ...opciones });
+    assert.strictEqual((await estadoDe(s)).estado_efectivo, esperado);
+  }
+});
+
+test('cancelada gana sobre las fechas', async () => {
+  // Darse de baja el día 3 no deja a nadie vigente hasta el 30.
+  const c = await comercioNuevo();
+  const s = await suscribir(c, { grupos: 2, dias: 30, estado: 'cancelada' });
+  assert.strictEqual((await estadoDe(s)).estado_efectivo, 'cancelada');
+});
+
+test('el trabajo marca lo vencido y es idempotente', async () => {
+  const c = await comercioNuevo();
+  const s = await suscribir(c, { grupos: 2, dias: 10, desde: -40 });
+
+  const { rows: primera } = await db.query('SELECT vencer_suscripciones() AS n');
+  assert.ok(Number(primera[0].n) >= 1);
+  assert.strictEqual((await estadoDe(s)).estado, 'vencida');
+
+  const { rows: segunda } = await db.query('SELECT vencer_suscripciones() AS n');
+  assert.strictEqual(Number(segunda[0].n), 0, 'la segunda corrida no toca nada');
+});
+
+test('el trabajo no pisa las canceladas', async () => {
+  // Tienen un estado terminal puesto a mano y una fecha de cancelación que no
+  // hay que perder.
+  const c = await comercioNuevo();
+  const s = await suscribir(c, { grupos: 2, dias: 10, desde: -40, estado: 'cancelada' });
+  await db.query('SELECT vencer_suscripciones()');
+  const fila = await estadoDe(s);
+  assert.strictEqual(fila.estado, 'cancelada');
+  assert.ok(fila.cancelada_at, 'conserva cuándo se canceló');
+});
+
+test('tras correr el trabajo no queda nada pendiente de vencer', async () => {
+  const c = await comercioNuevo();
+  await suscribir(c, { grupos: 2, dias: 10, desde: -40 });
+  await db.query('SELECT vencer_suscripciones()');
+  const { rows } = await db.query(
+    'SELECT count(*)::int AS n FROM v_suscripcion_estado WHERE pendiente_de_vencer'
+  );
+  assert.strictEqual(rows[0].n, 0);
+});

@@ -315,3 +315,34 @@ microcopy en tono cercano ("Cuéntale a los grupos de qué se trata tu lugar", n
 > la ilustración* `home_1.png` (azul `#315699`, naranja `#F79547`, índigo `#232456`), que son de
 > esa pieza gráfica y no de la identidad corporativa. El dashboard ya está corregido; el móvil
 > sigue con la paleta anterior. Habría que decidir si se alinea.
+## Mantenimiento: vencer las suscripciones
+
+Las suscripciones de comercio tienen un periodo con fecha de fin, y el estado
+guardado no se mueve solo. Hay una ruta para ordenarlo:
+
+```bash
+curl -X POST https://dashboard-api-production-c666.up.railway.app/admin/vencer-suscripciones \
+  -H "X-Admin-Key: $(railway variables --service dashboard-api --kv | grep ^ADMIN_API_KEY= | cut -d= -f2-)"
+```
+
+Y otra para ver quién está pagando y a quién le queda poco:
+
+```bash
+curl https://dashboard-api-production-c666.up.railway.app/admin/suscripciones -H "X-Admin-Key: …"
+```
+
+**Que esto no corra no rompe nada**, y conviene entender por qué antes de montar
+un cron y confiarle el negocio. `v_cupo_comercio` filtra por
+`current_date BETWEEN inicio AND fin`, así que un comercio con la suscripción
+caducada deja de recibir grupos *hoy*, lo ejecute alguien o no. Lo único que
+hace esta ruta es dejar de mentir en la columna `estado`, que es la que uno mira
+al cuadrar cuentas. La verdad se calcula en `v_suscripcion_estado`; el trabajo
+solo ordena.
+
+Para programarlo, en Railway: *Settings → Cron Schedule* del servicio, o
+cualquier programador externo que sepa hacer un POST. Diario a primera hora
+basta; es idempotente, así que llamarlo de más no hace daño.
+
+Sin `ADMIN_API_KEY` configurada, `/admin/**` responde **503**: un despliegue al
+que se le olvidó la variable pierde la administración en vez de exponerla.
+
