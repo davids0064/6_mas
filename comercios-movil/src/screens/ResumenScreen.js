@@ -84,6 +84,11 @@ export default function ResumenScreen({ onVerEvento, onIrA, onCuenta }) {
       >
         {error ? <Text style={styles.error}>😕 {error}</Text> : null}
 
+        {/* La afiliación va primero porque decide si llega algo: un local con
+            el perfil completo y la suscripción vencida no recibe ni un grupo, y
+            sin esto no tendría dónde enterarse. */}
+        <TarjetaAfiliacion afiliacion={resumen?.afiliacion} />
+
         {/* Hoy. Solo aparece si hay algo: una tarjeta vacía que diga "nada hoy"
             ocuparía el sitio más valioso de la pantalla para no decir nada. */}
         {deHoy.length > 0 ? (
@@ -104,11 +109,14 @@ export default function ResumenScreen({ onVerEvento, onIrA, onCuenta }) {
             {pendientes.map((p) => (
               <View key={p.clave} style={styles.pendiente}>
                 <Text style={styles.pendienteTexto}>{p.texto}</Text>
-                {/* Ya no hay pendientes sin pantalla: todo lo que la API puede
-                    pedir se resuelve dentro de la app. */}
-                <TouchableOpacity onPress={() => onIrA(DESTINO_PENDIENTE[p.clave])}>
-                  <Text style={styles.pendienteAccion}>Resolver →</Text>
-                </TouchableOpacity>
+                {/* Los de la afiliación no llevan a ninguna pantalla: no se
+                    resuelven tocando, se resuelven pagando. Un "Resolver →"
+                    que no hace nada es peor que no ponerlo. */}
+                {DESTINO_PENDIENTE[p.clave] ? (
+                  <TouchableOpacity onPress={() => onIrA(DESTINO_PENDIENTE[p.clave])}>
+                    <Text style={styles.pendienteAccion}>Resolver →</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ))}
           </View>
@@ -150,9 +158,74 @@ export default function ResumenScreen({ onVerEvento, onIrA, onCuenta }) {
   );
 }
 
-// Qué pantalla resuelve cada pendiente que manda la API. Están los seis que
-// puede mandar ResumenController: ya no queda ninguno que haya que ir a
-// resolver a otra parte.
+/**
+ * Estado de la afiliación: qué plan, cuánto cupo queda y hasta cuándo.
+ *
+ * Es el dato que decide si Seis Más le manda grupos al local, así que va
+ * arriba del todo y no escondido en un ajuste. Tres estados y tres aspectos:
+ *
+ *   · sin suscripción → rojo, porque no está recibiendo nada
+ *   · cupo agotado    → neutro, porque no es un problema: es que ya recibió
+ *                       lo que compró, y lo que toca es esperar o subir de plan
+ *   · con cupo        → normal, con las bolitas de lo que queda
+ *
+ * Las bolitas en vez de una barra: con 2 o 6 grupos, contar círculos se lee de
+ * un vistazo y una barra al 83% no dice nada.
+ */
+function TarjetaAfiliacion({ afiliacion }) {
+  if (!afiliacion) {
+    return (
+      <View style={[styles.afiliacion, styles.afiliacionAlerta]}>
+        <Text style={styles.afiliacionEtiqueta}>TU AFILIACIÓN</Text>
+        <Text style={styles.afiliacionTituloAlerta}>No está vigente</Text>
+        <Text style={styles.afiliacionTexto}>
+          No estás recibiendo grupos. Escríbenos para activarla.
+        </Text>
+      </View>
+    );
+  }
+
+  const { plan, grupos_mes: total, grupos_disponibles: libres, dias_restantes: dias } = afiliacion;
+  const agotado = libres === 0;
+
+  return (
+    <View style={[styles.afiliacion, agotado && styles.afiliacionAgotada]}>
+      <View style={styles.afiliacionFila}>
+        <Text style={styles.afiliacionEtiqueta}>TU AFILIACIÓN</Text>
+        <Text style={styles.afiliacionPlan}>{String(plan).toUpperCase()}</Text>
+      </View>
+
+      <Text style={styles.afiliacionTitulo}>
+        {agotado
+          ? 'Ya recibiste todo tu cupo'
+          : `${libres} ${libres === 1 ? 'grupo disponible' : 'grupos disponibles'}`}
+      </Text>
+
+      <View style={styles.bolitas}>
+        {Array.from({ length: total }, (_, i) => (
+          <View key={i} style={[styles.bolita, i < total - libres && styles.bolitaUsada]} />
+        ))}
+      </View>
+
+      <Text style={styles.afiliacionTexto}>
+        {agotado
+          ? `Tu cupo de ${total} ${total === 1 ? 'grupo' : 'grupos'} se renueva ${enDias(dias)}.`
+          : `${total - libres} de ${total} usados · renueva ${enDias(dias)}`}
+      </Text>
+    </View>
+  );
+}
+
+/** "hoy" / "mañana" / "en N días", igual que lo dice la API. */
+function enDias(dias) {
+  if (dias <= 0) return 'hoy';
+  if (dias === 1) return 'mañana';
+  return `en ${dias} días`;
+}
+
+// Qué pantalla resuelve cada pendiente que manda la API. Los de la afiliación
+// (afiliacion, cupo, renovacion) NO están acá a propósito: no se arreglan desde
+// ninguna pantalla de la app.
 const DESTINO_PENDIENTE = {
   plan: 'planes',
   disponibilidad: 'disponibilidad',
@@ -221,6 +294,36 @@ const styles = StyleSheet.create({
   cuerpo: { padding: ESPACIADO.l, paddingBottom: ESPACIADO.xl },
   centrado: { marginTop: ESPACIADO.xl },
   error: { ...TIPOGRAFIA.ayuda, color: COLORES.error, marginBottom: ESPACIADO.m },
+  afiliacion: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.tarjeta,
+    padding: ESPACIADO.m,
+    marginBottom: ESPACIADO.l,
+  },
+  // Rojo solo cuando no recibe grupos. El cupo agotado NO es un error: es que
+  // ya recibió lo que compró, y pintarlo de alarma castiga al que mejor va.
+  afiliacionAlerta: { borderWidth: 1, borderColor: COLORES.error, backgroundColor: COLORES.blanco },
+  afiliacionAgotada: { opacity: 0.9 },
+  afiliacionFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  afiliacionEtiqueta: { ...TIPOGRAFIA.ayuda, color: COLORES.textoTenue, letterSpacing: 1 },
+  afiliacionPlan: {
+    ...TIPOGRAFIA.ayuda,
+    color: COLORES.rojoMarca,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  afiliacionTitulo: { ...TIPOGRAFIA.etiqueta, fontSize: 18, color: COLORES.texto, marginTop: 4 },
+  afiliacionTituloAlerta: { ...TIPOGRAFIA.etiqueta, fontSize: 18, color: COLORES.error, marginTop: 4 },
+  afiliacionTexto: { ...TIPOGRAFIA.ayuda, color: COLORES.textoSuave, marginTop: 6 },
+  bolitas: { flexDirection: 'row', marginTop: ESPACIADO.s },
+  bolita: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginRight: 6,
+    backgroundColor: COLORES.rojoMarca,
+  },
+  bolitaUsada: { backgroundColor: COLORES.borde },
   bloque: { marginBottom: ESPACIADO.l },
   tituloBloque: {
     ...TIPOGRAFIA.ayuda,
