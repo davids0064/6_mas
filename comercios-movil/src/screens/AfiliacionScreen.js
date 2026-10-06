@@ -26,7 +26,18 @@ import { EMAIL_CONTACTO, WHATSAPP } from '../config/env';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '../theme/tokens';
 
 function fecha(iso) {
-  const d = new Date(String(iso).replace(' ', 'T'));
+  const texto = String(iso);
+
+  // Una fecha sin hora ('2026-10-06') la interpreta JavaScript como medianoche
+  // UTC, y en Colombia (UTC-5) eso cae el día ANTERIOR: el periodo del 6 de
+  // octubre al 5 de noviembre se mostraba como "del 5 de oct. al 4 de nov.".
+  // Añadirle la hora la convierte en una fecha local y el día deja de bailar.
+  //
+  // Los campos con hora (`fecha_hora` de los eventos) ya traen zona, así que
+  // esos se dejan como están.
+  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(texto);
+  const d = new Date(soloFecha ? `${texto}T00:00:00` : texto.replace(' ', 'T'));
+
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 }

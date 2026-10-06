@@ -116,3 +116,20 @@ test('el cupo agotado se explica sin tratarlo como un error', async () => {
   );
   expect(t).toContain('Cupo agotado');
 });
+
+
+test('las fechas del periodo no se corren un día', async () => {
+  // Una fecha sin hora ('2026-10-06') la interpreta JavaScript como medianoche
+  // UTC, y en Colombia eso cae el día anterior. El periodo se mostraba un día
+  // antes de principio a fin, que es el tipo de error que nadie reporta pero
+  // que hace dudar de todo lo demás que dice la pantalla.
+  const t = contenido(
+    await render({
+      ...VIGENTE,
+      actual: { ...VIGENTE.actual, inicio: '2026-10-06', fin: '2026-11-05' },
+    })
+  );
+  expect(t).toMatch(/6 de oct/);
+  expect(t).toMatch(/5 de nov/);
+  expect(t).not.toMatch(/5 de oct/);
+});

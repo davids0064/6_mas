@@ -41,8 +41,10 @@ es decir cuándo puedes recibirlos y qué les vas a dar.
 
 QUÉ HACES DESDE AQUÍ
 
-- Resumen: qué llega hoy, qué falta para poder recibir grupos y qué viene
-  después.
+- Resumen: qué llega hoy, cuánto cupo te queda este mes, qué falta para poder
+  recibir grupos y qué viene después.
+- Mi afiliación: tu plan, cuántos grupos te quedan y en qué se te fueron los
+  que ya usaste.
 - Eventos: los grupos que recibes, próximos y pasados. De cada uno ves quiénes
   vienen y puedes confirmarlo, abrirlo o cerrarlo.
 - Disponibilidad: las franjas horarias en las que puedes recibir, y cuántos
@@ -70,6 +72,25 @@ Sin espacios después de las comas: cuentan como carácter.
 
 ```
 restaurante,bar,cafe,reservas,grupos,local,negocio,gestion,mesas,anfitrion,eventos,agenda
+```
+
+## Novedades de esta versión
+
+En 1.0 este campo no se mostraba. Desde la 1.0.1 sí, y es lo primero que lee
+quien ya tiene la app instalada.
+
+### 1.0.1
+
+```
+Ahora sabes cuántos grupos te quedan.
+
+· Tu plan y tu cupo del mes, en lo primero que ves al abrir la app.
+
+· Nueva sección "Mi afiliación": cuántos grupos te quedan, en cuáles se te
+  fueron los que ya usaste, y qué incluye cada plan.
+
+· Te avisamos cuando el cupo se está acabando o tu afiliación está por vencer,
+  en lugar de que lo descubras porque dejaron de llegarte grupos.
 ```
 
 ## Campos que no son texto
@@ -142,6 +163,12 @@ La cuenta ya tiene actividad, para que no vea un local recién registrado:
 - Disponibilidad, Planes, Bienvenida, Menús y Anfitriones ya tienen contenido,
   incluidos un plan apagado, una franja apagada, un menú en borrador y un plato
   agotado, para que se vean los dos estados de cada interruptor.
+
+En la pantalla de inicio verá su afiliación: el plan contratado y cuántos de
+los grupos del mes le quedan. Tocándola se abre "Mi afiliación", donde está el
+detalle de en qué se le fue el cupo y qué incluye cada plan. Esa sección es
+solo informativa: el cobro de la afiliación se acuerda y se paga por fuera de
+la app, no hay ninguna compra dentro.
 
 En Cuenta puede probar la baja del local (Cuenta > Dar de baja el local), la
 política de privacidad y los términos. La baja es inmediata; si la usa, la

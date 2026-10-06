@@ -20,7 +20,7 @@ hay juego de 6.5″ para las dos apps.
 | Seis Más | `com.seismas.app` | `ios/6.9-usuarios/` | 1320 × 2868 | 10 |
 | Seis Más | `com.seismas.app` | `ios/6.5-usuarios/` | 1284 × 2778 | 10 |
 | Seis Más | `com.seismas.app` | `ios/13-ipad-usuarios/` | 2064 × 2752 | 3 |
-| Seis Más Comercios | `com.seismas.comercios` | `ios/6.9-comercios/` | 1320 × 2868 | 12 (**el máximo son 10**) |
+| Seis Más Comercios | `com.seismas.comercios` | `ios/6.9-comercios/` | 1320 × 2868 | 12 (**el máximo son 10**) · rehechas el 6 oct con la afiliación |
 | Seis Más Comercios | `com.seismas.comercios` | `ios/6.5-comercios/` | 1284 × 2778 | 12 (**el máximo son 10**) |
 
 **El juego de iPad es obligatorio desde la build 1.0 (4)**: la app de usuarios
@@ -48,6 +48,20 @@ ven sin que nadie deslice.
 
 Quedan fuera bienvenida, login y registro: son las tres pantallas que menos
 distinguen esta app de cualquier otra, y con diez huecos no sobra sitio.
+
+### Cuáles subir de comercios, y en qué orden
+
+Las dos primeras son las de la 1.0.1: lo que un restaurante quiere saber antes
+que nada es qué le cuesta y qué recibe a cambio.
+
+1. `01-resumen` — lo primero que ve: su cupo del mes y qué llega
+2. `02-afiliacion` — su plan, en qué se le fue el cupo y qué da cada plan
+3. `04-evento` — quiénes vienen esta noche
+4. `03-eventos` — la agenda
+5. `05-planes` · 6. `06-disponibilidad` · 7. `07-menus` · 8. `10-propuestas`
+9. `09-anfitriones` · 10. `12-cuenta`
+
+Quedan fuera `08-menu` y `11-mi-comercio`.
 
 ## Cómo se generaron
 
