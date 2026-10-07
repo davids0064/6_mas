@@ -5,7 +5,10 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+# Apple exige mínimo iOS 15.0 para subir a App Store Connect (error 90068 en
+# Transporter). `min_ios_version_supported` da 13.4 en React Native 0.74, así
+# que se fija a mano — igual que en mobile/ios/Podfile.
+platform :ios, '15.0'
 prepare_react_native_project!
 
 linkage = ENV['USE_FRAMEWORKS']

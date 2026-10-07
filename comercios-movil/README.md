@@ -131,6 +131,30 @@ sudo chown -R $(id -u):$(id -g) ~/.npm    # el caché de npm con dueño equivoca
 npm install
 ```
 
+## Objetivo de despliegue y número de build
+
+**iOS 15.0 como mínimo.** Transporter rechaza con el error **90068** cualquier
+`.ipa` que apunte por debajo. React Native 0.74 trae
+`min_ios_version_supported` = 13.4, que es lo que tenía esta app, así que el
+Podfile fija `platform :ios, '15.0'` a mano y el proyecto declara
+`IPHONEOS_DEPLOYMENT_TARGET = 15.0`.
+
+Lo que Apple mira es el **`MinimumOSVersion` de la app**, no el de cada Pod: la
+app de usuarios subió sin problema con Pods declarando 9.0. Comprobarlo antes
+de subir cuesta un segundo:
+
+```bash
+unzip -p build/ComerciosSeisMas.ipa '*/Info.plist' > /tmp/i.plist
+plutil -extract MinimumOSVersion raw -o - /tmp/i.plist   # tiene que decir 15.0
+```
+
+**El número de build lo sube Xcode al exportar.** `xcodebuild -exportArchive`
+gestiona la versión por defecto para que no choque con lo que ya hay en App
+Store Connect: el archive puede llevar build 2 y el `.ipa` salir con 3. No es un
+error — es Xcode evitando una colisión que él conoce y el repositorio no. Lo que
+sí conviene es sincronizar `CURRENT_PROJECT_VERSION` con lo que salió, para que
+el proyecto y el artefacto no digan cosas distintas.
+
 ## Publicar en la App Store
 
 ### Resuelto en el repo
